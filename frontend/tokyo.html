@@ -30,7 +30,7 @@
 <section>
   <h2>助成金プログラム</h2>
   <div class="toolbar">
-    <span class="note grow">予算 / 消化額 / 助成率 / 期間 / eligibility 条件を一覧表示</span>
+    <span class="note grow">予算 / 消化額 / 助成率 / 期間 / 対象カテゴリ + JAN を一覧表示</span>
   </div>
   <div id="programList" class="empty">読み込み中…</div>
 </section>
@@ -68,23 +68,62 @@
         <input name="end_at" type="datetime-local" required>
       </label>
     </div>
-    <label>対象 JAN コード (カンマ区切り)
-      <input name="eligible_jans" placeholder="4901234567890,4901234567891">
-    </label>
-    <label>認定加盟店 ID (カンマ区切り)
-      <input name="approved_stores" placeholder="store-bic-shinjuku,store-yodobashi-aki">
-    </label>
-    <label>対象居住区 (カンマ区切り)
-      <input name="wards" placeholder="新宿区,渋谷区,世田谷区">
-    </label>
+
+    <h3>対象商品 <span class="badge">カテゴリで一括 + 個別調整</span></h3>
+    <p class="note" style="margin-top:-4px">
+      左でカテゴリを選んで対象に入れると、そのカテゴリ全 JAN がまとめて対象になります。
+      個別商品を中央リストから「対象 →」「除外 →」へ動かして例外指定できます。
+    </p>
+    <div class="picker">
+      <div class="picker-head">
+        <input id="prodSearch" placeholder="商品名 / JAN で検索" class="grow">
+        <button type="button" class="ghost" id="bulkAllBtn">全カテゴリを対象に</button>
+        <button type="button" class="ghost" id="clearAllBtn">対象/除外をクリア</button>
+      </div>
+      <div class="picker-body">
+        <div class="picker-pane">
+          <h4>カテゴリ</h4>
+          <div id="catPane"></div>
+        </div>
+        <div class="picker-pane">
+          <h4>商品 <span class="badge gray" id="prodCount">0</span></h4>
+          <div id="prodPane"></div>
+        </div>
+        <div class="picker-pane">
+          <h4>対象 <span class="badge" id="elgCount">0</span> / 除外 <span class="badge red" id="excCount">0</span></h4>
+          <div id="selectedPane"></div>
+        </div>
+      </div>
+    </div>
+
+    <h3>認定加盟店</h3>
+    <div class="picker">
+      <div class="picker-head">
+        <input id="storeSearch" placeholder="店舗名 / 区で検索" class="grow">
+        <button type="button" class="ghost" id="storeAll">全店舗を選択</button>
+        <button type="button" class="ghost" id="storeNone">クリア</button>
+      </div>
+      <div class="picker-pane" style="border-right:none; max-height:200px" id="storePane"></div>
+    </div>
+
+    <h3>受給資格 (eligibility)</h3>
+    <div class="picker">
+      <div class="picker-head">
+        <span class="note grow">対象居住区</span>
+        <button type="button" class="ghost" id="wardAll">23 区+市町村を全選択</button>
+        <button type="button" class="ghost" id="wardNone">クリア</button>
+      </div>
+      <div class="picker-pane" style="border-right:none; max-height:160px" id="wardPane"></div>
+    </div>
     <div class="row">
       <label>最低年齢 (任意)
-        <input name="min_age" type="number" min="0" max="120">
+        <input name="min_age" type="number" min="0" max="120" placeholder="例: 65">
       </label>
       <label>上限年齢 (任意)
-        <input name="max_age" type="number" min="0" max="120">
+        <input name="max_age" type="number" min="0" max="120" placeholder="例: 49">
       </label>
     </div>
+
     <div class="toolbar">
       <button type="submit">プログラムを作成して予算ロック</button>
       <span class="note">作成と同時にトレジャリーから予算分の JPYC がロックされます</span>
@@ -93,79 +132,226 @@
   </form>
 </section>
 
-<section>
-  <h2>住民への PBM 発行 (運用デモ)</h2>
-  <p class="note" style="margin-top:-8px">通常は住民マイページから申請されますが、自治体システム側からの一括発行用エンドポイントを動作確認できます。</p>
-  <form id="issueForm" class="row">
-    <label>プログラム ID
-      <input name="program_id" required placeholder="prog-eco-2026">
-    </label>
-    <label>住民 PID (HMAC)
-      <input name="citizen_pid" required placeholder="badf24…">
-    </label>
-    <button type="submit">発行</button>
-  </form>
-  <div id="issueResult"></div>
-</section>
-
 </main>
 
+<script type="module">
+import { } from '/ui/scanner.js'; // ensure scanner.js is reachable; not used here
+
+</script>
 <script src="/ui/api.js"></script>
 <script>
+let CATEGORIES = [];
+let PRODUCTS = [];
+let STORES = [];
+const WARDS_TOKYO = [
+  "千代田区","中央区","港区","新宿区","文京区","台東区","墨田区","江東区",
+  "品川区","目黒区","大田区","世田谷区","渋谷区","中野区","杉並区","豊島区",
+  "北区","荒川区","板橋区","練馬区","足立区","葛飾区","江戸川区"
+];
+
+const state = {
+  cats: new Set(),       // selected category names
+  jansAdd: new Set(),    // explicitly added JANs (in addition to categories)
+  jansExc: new Set(),    // excluded JANs (override category)
+  stores: new Set(),
+  wards: new Set(),
+  filterCat: null,
+  filterText: '',
+};
+
 async function refreshTreasury() {
   const r = await api('/wallet/treasury');
   document.getElementById('treasuryValue').textContent = fmtJpy(r.jpyc_balance);
 }
 
+async function loadCatalog() {
+  CATEGORIES = await api('/products/categories');
+  PRODUCTS = await api('/products');
+  STORES = await api('/stores');
+  renderCats(); renderProds(); renderSelected(); renderStores(); renderWards();
+}
+
+function renderCats() {
+  const root = document.getElementById('catPane');
+  root.innerHTML = '';
+  root.appendChild(el('div', { class: 'cat-row' + (state.filterCat == null ? ' active' : ''),
+                              onclick: () => { state.filterCat = null; renderCats(); renderProds(); }},
+    el('span', {}, 'すべて'),
+    el('span', { class: 'badge gray' }, PRODUCTS.length)
+  ));
+  for (const c of CATEGORIES) {
+    const inSel = state.cats.has(c.category);
+    root.appendChild(el('div', { class: 'cat-row' + (state.filterCat === c.category ? ' active' : ''),
+                                 onclick: () => { state.filterCat = c.category; renderCats(); renderProds(); }},
+      el('span', {},
+        inSel ? el('span', { style: 'color:var(--tokyo-green)' }, '✓ ') : null,
+        c.category
+      ),
+      el('div', { class: 'pick-actions' },
+        inSel
+          ? el('button', { class: 'ghost', onclick: (e) => { e.stopPropagation(); state.cats.delete(c.category); renderAll(); }}, '対象解除')
+          : el('button', { onclick: (e) => { e.stopPropagation(); state.cats.add(c.category); renderAll(); }}, 'カテゴリ対象')
+      )
+    ));
+  }
+}
+
+function renderProds() {
+  const root = document.getElementById('prodPane');
+  root.innerHTML = '';
+  const filtered = PRODUCTS.filter(p =>
+    (!state.filterCat || p.category === state.filterCat) &&
+    (!state.filterText || (p.name + p.jan).toLowerCase().includes(state.filterText.toLowerCase()))
+  );
+  document.getElementById('prodCount').textContent = filtered.length;
+  for (const p of filtered) {
+    const inEligibleByCat = state.cats.has(p.category);
+    const inAdd = state.jansAdd.has(p.jan);
+    const inExc = state.jansExc.has(p.jan);
+    const klass = inExc ? 'in-excluded' : (inEligibleByCat || inAdd ? 'in-eligible' : '');
+    root.appendChild(el('div', { class: 'pick-row ' + klass },
+      el('div', { class: 'name' },
+        p.name,
+        el('div', { class: 'jan' }, p.jan + ' / ' + fmtJpy(p.price_jpy))
+      ),
+      el('span', { class: 'cat' }, p.category),
+      el('div', { class: 'pick-actions' },
+        inExc
+          ? el('button', { class: 'ghost', onclick: () => { state.jansExc.delete(p.jan); renderAll(); }}, '除外解除')
+          : (inEligibleByCat
+              ? el('button', { class: 'ghost', onclick: () => { state.jansExc.add(p.jan); renderAll(); }}, '個別除外')
+              : (inAdd
+                  ? el('button', { class: 'ghost', onclick: () => { state.jansAdd.delete(p.jan); renderAll(); }}, '対象解除')
+                  : el('button', { onclick: () => { state.jansAdd.add(p.jan); renderAll(); }}, '対象追加'))
+            )
+      )
+    ));
+  }
+}
+
+function renderSelected() {
+  const root = document.getElementById('selectedPane');
+  root.innerHTML = '';
+  // 計算: 実効対象 = カテゴリで暗黙対象 + 明示追加 - 除外
+  const byCat = PRODUCTS.filter(p => state.cats.has(p.category));
+  const byJan = PRODUCTS.filter(p => state.jansAdd.has(p.jan) && !state.cats.has(p.category));
+  const eligibles = byCat.concat(byJan).filter(p => !state.jansExc.has(p.jan));
+  const excludes = PRODUCTS.filter(p => state.jansExc.has(p.jan));
+  document.getElementById('elgCount').textContent = eligibles.length;
+  document.getElementById('excCount').textContent = excludes.length;
+
+  if (state.cats.size) {
+    root.appendChild(el('h4', {}, '対象カテゴリ'));
+    for (const c of state.cats) {
+      root.appendChild(el('div', { class: 'pick-row in-eligible' },
+        el('div', { class: 'name' }, c),
+        el('button', { class: 'ghost', onclick: () => { state.cats.delete(c); renderAll(); }}, '×')
+      ));
+    }
+  }
+  if (eligibles.length) {
+    root.appendChild(el('h4', {}, `対象商品 (${eligibles.length} JAN)`));
+    for (const p of eligibles.slice(0, 10)) {
+      root.appendChild(el('div', { class: 'pick-row' },
+        el('div', { class: 'name' }, p.name, el('div', { class: 'jan' }, p.jan))
+      ));
+    }
+    if (eligibles.length > 10) root.appendChild(el('div', { class: 'note' }, `… 他 ${eligibles.length - 10} 件`));
+  }
+  if (excludes.length) {
+    root.appendChild(el('h4', {}, '除外商品 (例外)'));
+    for (const p of excludes) {
+      root.appendChild(el('div', { class: 'pick-row in-excluded' },
+        el('div', { class: 'name' }, p.name, el('div', { class: 'jan' }, p.jan)),
+        el('button', { class: 'ghost', onclick: () => { state.jansExc.delete(p.jan); renderAll(); }}, '×')
+      ));
+    }
+  }
+  if (!state.cats.size && !eligibles.length && !excludes.length) {
+    root.appendChild(el('div', { class: 'empty' }, '対象未選択 — 左でカテゴリ/商品を選んでください'));
+  }
+}
+
+function renderStores() {
+  const root = document.getElementById('storePane');
+  root.innerHTML = '';
+  const text = (document.getElementById('storeSearch').value || '').toLowerCase();
+  for (const s of STORES.filter(s => !text || (s.name + s.ward).toLowerCase().includes(text))) {
+    const checked = state.stores.has(s.id);
+    root.appendChild(el('label', { class: 'pick-row' + (checked ? ' in-eligible' : ''), style:'display:flex; gap:8px;' },
+      el('input', { type: 'checkbox', checked: checked || false, onchange: (e) => {
+        if (e.target.checked) state.stores.add(s.id); else state.stores.delete(s.id);
+      }}),
+      el('div', { class: 'name' }, s.name, el('div', { class: 'jan' }, s.id + ' / ' + s.ward))
+    ));
+  }
+}
+
+function renderWards() {
+  const root = document.getElementById('wardPane');
+  root.innerHTML = '';
+  for (const w of WARDS_TOKYO) {
+    const checked = state.wards.has(w);
+    root.appendChild(el('label', { class: 'pick-row' + (checked ? ' in-eligible' : ''), style:'display:inline-flex; margin:2px; width:auto;' },
+      el('input', { type: 'checkbox', checked: checked || false, onchange: (e) => {
+        if (e.target.checked) state.wards.add(w); else state.wards.delete(w);
+      }}),
+      el('span', {}, w)
+    ));
+  }
+}
+
+function renderAll() { renderCats(); renderProds(); renderSelected(); renderStores(); renderWards(); }
+
+document.getElementById('prodSearch').addEventListener('input', (e) => { state.filterText = e.target.value; renderProds(); });
+document.getElementById('storeSearch').addEventListener('input', renderStores);
+document.getElementById('bulkAllBtn').addEventListener('click', () => { CATEGORIES.forEach(c => state.cats.add(c.category)); renderAll(); });
+document.getElementById('clearAllBtn').addEventListener('click', () => { state.cats.clear(); state.jansAdd.clear(); state.jansExc.clear(); renderAll(); });
+document.getElementById('storeAll').addEventListener('click', () => { STORES.forEach(s => state.stores.add(s.id)); renderStores(); });
+document.getElementById('storeNone').addEventListener('click', () => { state.stores.clear(); renderStores(); });
+document.getElementById('wardAll').addEventListener('click', () => { WARDS_TOKYO.forEach(w => state.wards.add(w)); renderWards(); });
+document.getElementById('wardNone').addEventListener('click', () => { state.wards.clear(); renderWards(); });
+
 async function refreshPrograms() {
   const list = await api('/programs');
   const root = document.getElementById('programList');
   root.innerHTML = '';
-  if (!list.length) {
-    root.className = 'empty';
-    root.textContent = 'まだ登録されていません。下のフォームから作成してください。';
-    return;
-  }
+  if (!list.length) { root.className = 'empty'; root.textContent = 'まだ登録されていません。下のフォームから作成してください。'; return; }
   root.className = '';
   for (const p of list) {
     const used = p.spent_jpy / p.budget_jpy;
-    const card = el('div', { class: 'prog-card' });
-
-    const main = el('div', {},
-      el('div', { style: 'display:flex; gap:8px; align-items:center;' },
-        el('h3', {}, p.name),
-        p.revoked ? el('span', { class: 'badge red' }, '取消済') : el('span', { class: 'badge' }, '有効'),
-        el('span', { class: 'badge gray' }, p.id)
-      ),
-      el('p', { class: 'desc' }, p.description || ''),
-      el('div', { class: 'meta' },
-        el('span', {}, '助成率 ', el('b', {}, (p.subsidy_bps/100).toFixed(1) + '%')),
-        el('span', {}, '上限 ', el('b', {}, fmtJpy(p.per_citizen_cap_jpy))),
-        el('span', {}, '期間 ' + p.start_at.slice(0,10) + ' – ' + p.end_at.slice(0,10)),
-        el('span', {}, '対象 JAN ', el('b', {}, (p.eligible_jans||[]).length + ' 件')),
-        el('span', {}, '認定店舗 ', el('b', {}, (p.approved_stores||[]).length + ' 件'))
-      ),
-      el('div', { style: 'margin-top:10px' },
-        el('div', { class: 'bar-track', style: 'max-width:360px' },
-          el('div', { class: 'bar', style: `width:${Math.max(2, used*100).toFixed(1)}%` })
+    root.appendChild(el('div', { class: 'prog-card' },
+      el('div', {},
+        el('div', { style: 'display:flex; gap:8px; align-items:center;' },
+          el('h3', {}, p.name),
+          p.revoked ? el('span', { class: 'badge red' }, '取消済') : el('span', { class: 'badge' }, '有効'),
+          el('span', { class: 'badge gray' }, p.id)
         ),
-        el('div', { class: 'note' }, `予算 ${fmtJpy(p.budget_jpy)} / 消化 ${fmtJpy(p.spent_jpy)} (${(used*100).toFixed(2)}%)`)
-      )
-    );
-
-    const ops = el('div', {},
-      p.revoked ? null :
-        el('button', { class: 'danger', onclick: async () => {
+        el('p', { class: 'desc' }, p.description || ''),
+        el('div', { class: 'meta' },
+          el('span', {}, '助成率 ', el('b', {}, (p.subsidy_bps/100).toFixed(1) + '%')),
+          el('span', {}, '上限 ', el('b', {}, fmtJpy(p.per_citizen_cap_jpy))),
+          el('span', {}, '対象カテゴリ ', el('b', {}, (p.eligible_categories||[]).length + ' 件')),
+          el('span', {}, '個別 JAN ', el('b', {}, (p.eligible_jans||[]).length + ' 件')),
+          el('span', {}, '除外 JAN ', el('b', {}, (p.excluded_jans||[]).length + ' 件')),
+          el('span', {}, '認定店舗 ', el('b', {}, (p.approved_stores||[]).length + ' 件'))
+        ),
+        el('div', { style: 'margin-top:10px' },
+          el('div', { class: 'bar-track', style: 'max-width:360px' },
+            el('div', { class: 'bar', style: `width:${Math.max(2, used*100).toFixed(1)}%` })
+          ),
+          el('div', { class: 'note' }, `予算 ${fmtJpy(p.budget_jpy)} / 消化 ${fmtJpy(p.spent_jpy)} (${(used*100).toFixed(2)}%)`)
+        )
+      ),
+      el('div', {},
+        p.revoked ? null : el('button', { class: 'danger', onclick: async () => {
           if (!confirm('このプログラムを取消しますか? 残予算はトレジャリーへ返却されます。')) return;
           const r = await api(`/programs/${p.id}`, { method: 'DELETE' });
           alert('取消完了 / 返却額 ' + fmtJpy(r.refund_jpy));
           refreshAll();
         }}, '取消')
-    );
-
-    card.appendChild(main);
-    card.appendChild(ops);
-    root.appendChild(card);
+      )
+    ));
   }
 }
 
@@ -183,8 +369,7 @@ document.getElementById('newForm').addEventListener('submit', async (ev) => {
   errBox.innerHTML = '';
   const fd = new FormData(ev.target);
   const eligibility = {};
-  const wards = (fd.get('wards') || '').toString().split(',').map(s => s.trim()).filter(Boolean);
-  if (wards.length) eligibility.wards = wards;
+  if (state.wards.size) eligibility.wards = [...state.wards];
   if (fd.get('min_age')) eligibility.min_age = Number(fd.get('min_age'));
   if (fd.get('max_age')) eligibility.max_age = Number(fd.get('max_age'));
   const body = {
@@ -197,40 +382,25 @@ document.getElementById('newForm').addEventListener('submit', async (ev) => {
     start_at: fd.get('start_at'),
     end_at: fd.get('end_at'),
     eligibility,
-    eligible_jans: (fd.get('eligible_jans') || '').toString().split(',').map(s => s.trim()).filter(Boolean),
-    approved_stores: (fd.get('approved_stores') || '').toString().split(',').map(s => s.trim()).filter(Boolean),
+    eligible_categories: [...state.cats],
+    eligible_jans: [...state.jansAdd],
+    excluded_jans: [...state.jansExc],
+    approved_stores: [...state.stores],
   };
   try {
     await api('/programs', { method: 'POST', body: JSON.stringify(body) });
     ev.target.reset();
+    state.cats.clear(); state.jansAdd.clear(); state.jansExc.clear(); state.stores.clear(); state.wards.clear();
+    renderAll();
     refreshAll();
   } catch (e) {
     errBox.appendChild(el('div', { class: 'error' }, e.message));
   }
 });
 
-document.getElementById('issueForm').addEventListener('submit', async (ev) => {
-  ev.preventDefault();
-  const fd = new FormData(ev.target);
-  const out = document.getElementById('issueResult');
-  out.innerHTML = '';
-  try {
-    const r = await api(`/programs/${fd.get('program_id')}/issue`, {
-      method: 'POST',
-      body: JSON.stringify({ citizen_pid: fd.get('citizen_pid') })
-    });
-    out.appendChild(el('div', { class: 'receipt' },
-      el('h3', {}, '発行完了'),
-      el('div', {}, `PBM ID: `, el('code', {}, r.pbm_id)),
-      el('div', {}, `枠: ${fmtJpy(r.remaining_jpy)} / 失効: ${r.expires_at.slice(0,10)}`)
-    ));
-  } catch (e) {
-    out.appendChild(el('div', { class: 'error' }, e.message));
-  }
-});
-
 function refreshAll() { refreshTreasury(); refreshPrograms(); }
 refreshAll();
+loadCatalog();
 </script>
 </body>
 </html>

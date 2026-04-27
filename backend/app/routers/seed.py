@@ -93,6 +93,8 @@ def load(db: Session = Depends(_db)):
                 end_at=datetime.fromisoformat(p["end_at"]),
                 eligibility=p.get("eligibility", {}),
                 eligible_jans=p.get("eligible_jans", []),
+                eligible_categories=p.get("eligible_categories", []),
+                excluded_jans=p.get("excluded_jans", []),
                 approved_stores=p.get("approved_stores", []),
             )
         )

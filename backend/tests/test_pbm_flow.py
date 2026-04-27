@@ -139,6 +139,57 @@ def test_non_resident_cannot_get_pbm():
     assert "対象外" in r.json()["detail"]
 
 
+def test_category_inclusion_brings_subsidy():
+    """eligible_categories で家電カテゴリを丸ごと対象にできる。"""
+    _setup_catalog()
+    client.post("/products", json={"jan": "4900000000001", "name": "別の省エネエアコン", "category": "appliance.air_conditioner", "price_jpy": 80_000})
+    client.post("/wallet/treasury/topup", json={"amount_jpy": 5_000_000})
+    _create_program(eligible_jans=[], eligible_categories=["appliance.air_conditioner"])
+    pid = _login("MN-T06")
+    client.post("/wallet/citizen/" + pid + "/topup", json={"amount_jpy": 200_000})
+    client.post("/programs/prog-test-eco/issue", json={"citizen_pid": pid})
+
+    # eligible_jans に明示してなくてもカテゴリ一致で助成適用
+    r = client.post("/purchase", json={
+        "citizen_pid": pid,
+        "store_id": "store-a",
+        "jan": "4900000000001",
+        "qty": 1,
+    }).json()
+    assert r["subsidy_jpy"] == 24_000  # 80,000 * 30%
+
+
+def test_excluded_jan_overrides_category_inclusion():
+    """カテゴリ一括対象でも excluded_jans 指定で個別除外できる。"""
+    _setup_catalog()
+    client.post("/wallet/treasury/topup", json={"amount_jpy": 5_000_000})
+    _create_program(
+        eligible_jans=[],
+        eligible_categories=["appliance.air_conditioner"],
+        excluded_jans=["4901234567890"],
+    )
+    pid = _login("MN-T07")
+    client.post("/wallet/citizen/" + pid + "/topup", json={"amount_jpy": 200_000})
+    client.post("/programs/prog-test-eco/issue", json={"citizen_pid": pid})
+
+    r = client.post("/purchase", json={
+        "citizen_pid": pid,
+        "store_id": "store-a",
+        "jan": "4901234567890",  # カテゴリは対象だが excluded
+        "qty": 1,
+    }).json()
+    assert r["subsidy_jpy"] == 0
+    assert r["citizen_pay_jpy"] == 100_000
+
+
+def test_categories_endpoint_returns_counts():
+    _setup_catalog()
+    rows = client.get("/products/categories").json()
+    by_cat = {r["category"]: r["count"] for r in rows}
+    assert by_cat["appliance.air_conditioner"] == 1
+    assert by_cat["other"] == 1
+
+
 def test_revoke_program_blocks_future_purchases():
     _setup_catalog()
     client.post("/wallet/treasury/topup", json={"amount_jpy": 5_000_000})

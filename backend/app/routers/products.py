@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import get_session
@@ -47,21 +47,37 @@ def upsert_product(payload: ProductIn, db: Session = Depends(_db)) -> ProductIn:
     return payload
 
 
+# 注意: 静的パス (/products/categories) は動的パス (/products/{jan}) よりも先に
+# 登録しないと、{jan} に "categories" が吸われてしまう。
+@router.get("/products/categories")
+def list_categories(db: Session = Depends(_db)):
+    """カテゴリ一覧 + 各カテゴリの商品件数。"""
+    rows = db.execute(
+        select(Product.category, func.count(Product.jan))
+        .group_by(Product.category)
+        .order_by(Product.category)
+    ).all()
+    return [{"category": c, "count": n} for c, n in rows]
+
+
+@router.get("/products")
+def list_products(category: str | None = None, db: Session = Depends(_db)):
+    q = select(Product)
+    if category:
+        q = q.where(Product.category == category)
+    rows = db.execute(q).scalars().all()
+    return [
+        {"jan": r.jan, "name": r.name, "category": r.category, "price_jpy": r.price_jpy}
+        for r in rows
+    ]
+
+
 @router.get("/products/{jan}", response_model=ProductIn)
 def get_product(jan: str, db: Session = Depends(_db)) -> ProductIn:
     p = db.get(Product, jan)
     if p is None:
         raise HTTPException(404, "product not found")
     return ProductIn(jan=p.jan, name=p.name, category=p.category, price_jpy=p.price_jpy)
-
-
-@router.get("/products")
-def list_products(db: Session = Depends(_db)):
-    rows = db.execute(select(Product)).scalars().all()
-    return [
-        {"jan": r.jan, "name": r.name, "category": r.category, "price_jpy": r.price_jpy}
-        for r in rows
-    ]
 
 
 class StoreIn(BaseModel):

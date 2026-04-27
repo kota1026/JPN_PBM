@@ -2,7 +2,7 @@
   {
     "id": "prog-eco-2026",
     "name": "省エネ家電購入支援 2026",
-    "description": "都内在住者を対象に、対象省エネ家電の購入額の30%を助成 (上限5万円)。",
+    "description": "都内在住者を対象に、対象省エネ家電 (家電カテゴリ全般) の購入額の30%を助成 (上限5万円)。",
     "budget_jpy": 50000000,
     "subsidy_bps": 3000,
     "per_citizen_cap_jpy": 50000,
@@ -11,13 +11,15 @@
     "eligibility": {
       "wards": ["新宿区","渋谷区","世田谷区","江東区","千代田区","港区","目黒区","品川区","中央区","文京区","台東区","墨田区","北区","荒川区","板橋区","練馬区","足立区","葛飾区","江戸川区","豊島区","中野区","杉並区","大田区"]
     },
-    "eligible_jans": ["4901234567890","4901234567891","4901234567892"],
+    "eligible_categories": ["appliance.air_conditioner","appliance.refrigerator","appliance.light"],
+    "eligible_jans": [],
+    "excluded_jans": [],
     "approved_stores": ["store-bic-shinjuku","store-yodobashi-aki","store-aeon-koto"]
   },
   {
     "id": "prog-baby-2026",
     "name": "子育て家庭食品支援 2026",
-    "description": "都内在住の概ね 0–18 歳の子を持つ家庭への食品支援 (1万円/月相当)。",
+    "description": "都内在住の概ね 18–49 歳の保護者世帯への乳幼児食品支援 (1万円/月相当)。粉ミルク・離乳食を一括対象に、おむつ等の育児用品も助成。",
     "budget_jpy": 30000000,
     "subsidy_bps": 10000,
     "per_citizen_cap_jpy": 10000,
@@ -28,13 +30,15 @@
       "min_age": 18,
       "max_age": 49
     },
-    "eligible_jans": ["4912345678901","4912345678902","4912345678903"],
+    "eligible_categories": ["food.baby","goods.baby"],
+    "eligible_jans": [],
+    "excluded_jans": [],
     "approved_stores": ["store-aeon-koto","store-summit-setaga","store-matsumoto-shib"]
   },
   {
     "id": "prog-senior-2026",
     "name": "高齢者ヘルスケア商品支援 2026",
-    "description": "65 歳以上の都内在住者を対象に、対象医薬品/栄養食品の50%を助成 (上限2万円)。",
+    "description": "65 歳以上の都内在住者を対象に、医薬品・栄養食品カテゴリの50%を助成 (上限2万円)。",
     "budget_jpy": 20000000,
     "subsidy_bps": 5000,
     "per_citizen_cap_jpy": 20000,
@@ -44,7 +48,9 @@
       "wards": ["新宿区","渋谷区","世田谷区","江東区","千代田区"],
       "min_age": 65
     },
-    "eligible_jans": ["4923456789012","4923456789013"],
+    "eligible_categories": ["med.rx","med.supplement"],
+    "eligible_jans": [],
+    "excluded_jans": [],
     "approved_stores": ["store-matsumoto-shib","store-aeon-koto","store-summit-setaga"]
   }
 ]
