@@ -48,7 +48,7 @@
       "wards": ["新宿区","渋谷区","世田谷区","江東区","千代田区"],
       "min_age": 65
     },
-    "eligible_categories": ["med.rx","med.otc","med.supplement"],
+    "eligible_categories": ["med.otc","med.supplement"],
     "eligible_jans": [],
     "excluded_jans": [],
     "approved_stores": ["store-matsumoto-shib","store-aeon-koto","store-summit-setaga"]
@@ -82,7 +82,7 @@
     "eligibility": {
       "wards": ["新宿区","渋谷区","世田谷区","江東区","千代田区"]
     },
-    "eligible_categories": ["care.adult","care.equipment"],
+    "eligible_categories": ["care.adult"],
     "eligible_jans": [],
     "excluded_jans": [],
     "approved_stores": ["store-matsumoto-shib","store-aeon-koto","store-summit-setaga"]

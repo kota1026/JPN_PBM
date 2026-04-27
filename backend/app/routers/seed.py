@@ -41,12 +41,13 @@ def load(db: Session = Depends(_db)):
     # トレジャリーへ大きめの JPYC をミント
     jpyc.mint(db, jpyc.TREASURY_ID, jpyc.TREASURY_KIND, 100_000_000)
 
-    # 商品
+    # 商品 (seed の `source` 等の未知キーは無視)
     products = json.loads((SEED_DIR / "products.json").read_text(encoding="utf-8"))
+    product_fields = {"jan", "name", "category", "price_jpy"}
     for pr in products:
         if db.get(Product, pr["jan"]):
             continue
-        db.add(Product(**pr))
+        db.add(Product(**{k: v for k, v in pr.items() if k in product_fields}))
 
     # 加盟店
     stores = json.loads((SEED_DIR / "stores.json").read_text(encoding="utf-8"))
