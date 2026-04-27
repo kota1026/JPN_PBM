@@ -7,6 +7,7 @@ import pathlib
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.db import init_db
@@ -47,8 +48,13 @@ if FRONTEND_DIR.exists():
     app.mount("/ui", StaticFiles(directory=FRONTEND_DIR, html=True), name="ui")
 
 
-@app.get("/")
+@app.get("/", include_in_schema=False)
 def root():
+    return RedirectResponse(url="/ui/index.html", status_code=307)
+
+
+@app.get("/api", include_in_schema=False)
+def api_meta():
     return {
         "name": "JPN PBM",
         "ui": [

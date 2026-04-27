@@ -2,31 +2,125 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>JPN PBM — 東京都ステーブルコイン助成金 MVP</title>
 <link rel="stylesheet" href="/ui/styles.css">
 </head>
 <body>
-<header>
-  <h1>JPN PBM</h1>
-  <p>東京都ステーブルコイン助成金 PBM MVP</p>
-</header>
-<main class="grid">
-  <a class="card" href="/ui/tokyo.html"><h2>東京都管理</h2><p>助成金プログラムの作成・予算管理</p></a>
-  <a class="card" href="/ui/citizen.html"><h2>住民ウォレット</h2><p>マイナンバー認証 + PBM/JPYC 残高 + 購入</p></a>
-  <a class="card" href="/ui/retailer.html"><h2>加盟店 POS</h2><p>JAN スキャンで PBM 決済</p></a>
-  <a class="card" href="/ui/ebpm.html"><h2>EBPM ダッシュボード</h2><p>政策効果の可視化</p></a>
+<div id="chrome"></div>
+<main>
+
+<section>
+  <h2>はじめに</h2>
+  <p style="margin:0; color:var(--ink-sub); font-size:13px;">
+    本デモは、東京都が交付する助成金を <b>JPYC をラップした PBM (Purpose Bound Money)</b>
+    として配布し、JAN コードによる商品識別とマイナンバーカード 4 情報による受給資格判定で
+    「目的どおりの利用」を保証する仕組みの MVP です。
+    まず下のボタンでサンプルデータを投入してから、各役割の画面に進んでください。
+  </p>
+  <div class="toolbar" style="margin-top:14px">
+    <button id="seedBtn">デモデータをロード</button>
+    <button class="ghost" id="checkBtn">登録状況を確認</button>
+    <span id="seedStatus" class="note grow"></span>
+  </div>
+  <div id="seedSummary"></div>
+</section>
+
+<section>
+  <h2>4 つの役割で操作する</h2>
+  <div class="tile-grid">
+    <a class="tile" href="/ui/tokyo.html">
+      <span class="tile-role">TOKYO METROPOLITAN GOV</span>
+      <h2>東京都管理</h2>
+      <p>助成金プログラムを設計・予算をロック・対象 JAN / 認定加盟店 / 受給資格を設定。</p>
+    </a>
+    <a class="tile tile-citizen" href="/ui/citizen.html">
+      <span class="tile-role">CITIZEN</span>
+      <h2>住民マイページ</h2>
+      <p>マイナンバーカード認証で受給可能なプログラムを表示し、PBM トークンを申請・保有。</p>
+    </a>
+    <a class="tile tile-retailer" href="/ui/retailer.html">
+      <span class="tile-role">RETAIL POS</span>
+      <h2>加盟店レジ</h2>
+      <p>JAN コードで商品を識別し、対象なら自動で助成金を適用、JPYC で即時清算。</p>
+    </a>
+    <a class="tile tile-ebpm" href="/ui/ebpm.html">
+      <span class="tile-role">EBPM ANALYTICS</span>
+      <h2>EBPM ダッシュボード</h2>
+      <p>消化率・レバレッジ・受給者カバレッジを匿名集計で可視化、k-匿名性を保護。</p>
+    </a>
+  </div>
+</section>
+
+<section>
+  <h2>仕組みの要点</h2>
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="label">PBM</div>
+      <div class="value" style="font-size:15px">Purpose 拘束型</div>
+      <div class="sub">JPYC を担保にロックし、対象 JAN × 認定店舗 × 有効住民でのみアンラップ</div>
+    </div>
+    <div class="kpi navy">
+      <div class="label">マイナンバー連携</div>
+      <div class="value" style="font-size:15px">4 情報で資格判定</div>
+      <div class="sub">住所(区) / 年齢 / 性別を eligibility に利用、本体は HMAC で擬似 ID 化</div>
+    </div>
+    <div class="kpi yellow">
+      <div class="label">JAN コード識別</div>
+      <div class="value" style="font-size:15px">商品単位の制御</div>
+      <div class="sub">プログラムごとの対象 JAN リストで、対象外商品には助成 0</div>
+    </div>
+    <div class="kpi red">
+      <div class="label">EBPM</div>
+      <div class="value" style="font-size:15px">匿名集計のみ</div>
+      <div class="sub">k=5 未満セルは丸めて公開、政策効果を即時に可視化</div>
+    </div>
+  </div>
+</section>
+
 </main>
-<footer>
-  <button id="seedBtn">デモデータをロード</button>
-  <span id="seedStatus"></span>
-</footer>
+
 <script src="/ui/api.js"></script>
 <script>
-document.getElementById('seedBtn').addEventListener('click', async () => {
-  const r = await api('/seed/load', {method: 'POST'});
-  document.getElementById('seedStatus').textContent =
-    'OK: トレジャリー入金済 / マイナID→pid マップ件数 ' + Object.keys(r.pid_map).length;
-});
+async function loadSeed() {
+  const btn = document.getElementById('seedBtn');
+  const status = document.getElementById('seedStatus');
+  btn.disabled = true;
+  status.innerHTML = '<span class="loading"></span>シード投入中…';
+  try {
+    const r = await api('/seed/load', { method: 'POST' });
+    status.innerHTML = `<span class="badge">完了</span> マイナID → 擬似ID マッピング: ${Object.keys(r.pid_map).length} 件 / トレジャリー入金済`;
+    await renderSummary();
+  } catch (e) {
+    status.innerHTML = `<span class="error">${e.message}</span>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+async function renderSummary() {
+  try {
+    const [t, ps, prods, stores] = await Promise.all([
+      api('/wallet/treasury'), api('/programs'), api('/products'), api('/stores'),
+    ]);
+    const root = document.getElementById('seedSummary');
+    root.innerHTML = '';
+    root.appendChild(el('div', { class: 'kpi-grid', style: 'margin-top:14px' },
+      kpi('東京都トレジャリー', fmtJpy(t.jpyc_balance), 'green'),
+      kpi('登録プログラム', ps.length + ' 件', 'navy'),
+      kpi('商品マスタ (JAN)', prods.length + ' 件', 'yellow'),
+      kpi('認定加盟店', stores.length + ' 件', 'red'),
+    ));
+  } catch (e) { /* not seeded yet — silent */ }
+}
+function kpi(label, value, tone) {
+  return el('div', { class: 'kpi ' + (tone || '') },
+    el('div', { class: 'label' }, label),
+    el('div', { class: 'value' }, value)
+  );
+}
+document.getElementById('seedBtn').addEventListener('click', loadSeed);
+document.getElementById('checkBtn').addEventListener('click', renderSummary);
+renderSummary();
 </script>
 </body>
 </html>

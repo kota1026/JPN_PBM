@@ -2,48 +2,76 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<title>住民ウォレット — JPN PBM</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>住民マイページ — JPN PBM</title>
 <link rel="stylesheet" href="/ui/styles.css">
 </head>
 <body>
-<div id="nav"></div>
-<header><h1>住民ウォレット</h1><p>マイナンバーカード認証 → PBM 受領 → 購入</p></header>
+<div id="chrome"></div>
 <main>
+
 <section>
-  <h2>① マイナンバーカード認証 (4 情報)</h2>
+  <h2>① マイナンバーカード認証 <span class="badge gray">擬似 4 情報</span></h2>
+  <p class="note" style="margin-top:-6px">
+    本番は公的個人認証 (JPKI) で署名された 4 情報の VC を検証します。
+    MVP では入力された 4 情報を HMAC で擬似 ID 化し、本体は保存しません。
+  </p>
   <form id="loginForm">
     <div class="row">
-      <label>マイナンバー (擬似)<input name="maina_id" value="MN-0001"></label>
-      <label>氏名<input name="name" value="山田 太郎"></label>
+      <label>マイナンバー (擬似)
+        <input name="maina_id" value="MN-0001">
+      </label>
+      <label>氏名
+        <input name="name" value="山田 太郎">
+      </label>
     </div>
-    <label>住所<input name="address" value="東京都新宿区西新宿2-8-1"></label>
+    <label>住所
+      <input name="address" value="東京都新宿区西新宿2-8-1">
+    </label>
     <div class="row">
-      <label>区市町村<input name="ward" value="新宿区"></label>
-      <label>生年月日<input name="dob" type="date" value="1955-03-12"></label>
+      <label>区市町村
+        <input name="ward" value="新宿区">
+      </label>
+      <label>生年月日
+        <input name="dob" type="date" value="1955-03-12">
+      </label>
       <label>性別
         <select name="gender">
-          <option>M</option><option>F</option><option>X</option>
+          <option value="M">男性</option>
+          <option value="F">女性</option>
+          <option value="X">その他/未設定</option>
         </select>
       </label>
     </div>
-    <button type="submit">マイナンバー認証</button>
-    <small>※ MVP モック。本番は JPKI 公的個人認証で署名検証。</small>
+    <div class="toolbar">
+      <button type="submit">マイナンバーカードで認証</button>
+      <span class="note">MVP モック: 本番は JPKI 公的個人認証を使用</span>
+    </div>
   </form>
   <div id="me"></div>
 </section>
 
 <section>
   <h2>② 受給可能な助成金プログラム</h2>
-  <div id="eligible"></div>
+  <p class="note" style="margin-top:-6px">
+    入力した 4 情報をもとに、東京都が定義する eligibility 条件 (居住区 / 年齢 / 性別) を自動判定し、対象のプログラムだけ表示します。
+  </p>
+  <div id="eligible" class="empty">先に上で認証してください</div>
 </section>
 
 <section>
   <h2>③ ウォレット残高</h2>
-  <div id="walletKpi" class="kpi-grid"></div>
+  <div id="walletKpi" class="kpi-grid">
+    <div class="kpi"><div class="label">通常 JPYC 残高</div><div class="value">-</div></div>
+    <div class="kpi navy"><div class="label">保有 PBM トークン</div><div class="value">-</div></div>
+    <div class="kpi yellow"><div class="label">PBM 残枠合計</div><div class="value">-</div></div>
+  </div>
   <h3>保有 PBM トークン</h3>
-  <div id="pbmList"></div>
+  <div id="pbmList" class="empty">なし</div>
 </section>
+
 </main>
+
 <script src="/ui/api.js"></script>
 <script>
 let pid = null;
@@ -51,18 +79,27 @@ let pid = null;
 document.getElementById('loginForm').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   const fd = new FormData(ev.target);
-  const r = await api('/auth/myna/login', { method: 'POST', body: JSON.stringify({
-    maina_id: fd.get('maina_id'),
-    name: fd.get('name'),
-    address: fd.get('address'),
-    ward: fd.get('ward'),
-    dob: fd.get('dob'),
-    gender: fd.get('gender'),
-  })});
-  pid = r.pid;
-  document.getElementById('me').innerHTML =
-    `<p>認証 OK / 擬似ID (HMAC): <code>${pid.slice(0,16)}…</code></p>`;
-  await refreshAll();
+  try {
+    const r = await api('/auth/myna/login', { method: 'POST', body: JSON.stringify({
+      maina_id: fd.get('maina_id'),
+      name: fd.get('name'),
+      address: fd.get('address'),
+      ward: fd.get('ward'),
+      dob: fd.get('dob'),
+      gender: fd.get('gender'),
+    })});
+    pid = r.pid;
+    document.getElementById('me').innerHTML = '';
+    document.getElementById('me').appendChild(el('div', { class: 'receipt' },
+      el('h3', {}, '認証完了'),
+      el('div', {}, '擬似 ID (HMAC, 不可逆): ', el('code', {}, pid)),
+      el('div', { class: 'note' }, '失効: ' + r.expires_at)
+    ));
+    await refreshAll();
+  } catch (e) {
+    document.getElementById('me').innerHTML = '';
+    document.getElementById('me').appendChild(el('div', { class: 'error' }, e.message));
+  }
 });
 
 async function refreshAll() {
@@ -72,55 +109,80 @@ async function refreshAll() {
   const root = document.getElementById('eligible');
   root.innerHTML = '';
   if (!eligible.length) {
-    root.innerHTML = '<p>(現在受給可能なプログラムはありません)</p>';
+    root.className = 'empty';
+    root.textContent = '現在、受給可能なプログラムはありません';
   } else {
+    root.className = '';
     for (const p of eligible) {
-      root.appendChild(el('div', { class: 'card' },
-        el('h3', {}, p.name),
-        el('p', {}, p.description),
-        el('p', {}, `助成率 ${(p.subsidy_bps/100).toFixed(0)}% / 上限 ${fmtJpy(p.per_citizen_cap_jpy)} / 残予算 ${fmtJpy(p.budget_jpy - p.spent_jpy)}`),
+      const remaining = p.budget_jpy - p.spent_jpy;
+      root.appendChild(el('div', { class: 'prog-card' },
+        el('div', {},
+          el('div', { style: 'display:flex; gap:8px; align-items:center;' },
+            el('h3', {}, p.name),
+            el('span', { class: 'badge' }, '受給可能')
+          ),
+          el('p', { class: 'desc' }, p.description || ''),
+          el('div', { class: 'meta' },
+            el('span', {}, '助成率 ', el('b', {}, (p.subsidy_bps/100).toFixed(0) + '%')),
+            el('span', {}, '上限 ', el('b', {}, fmtJpy(p.per_citizen_cap_jpy))),
+            el('span', {}, '残予算 ', el('b', {}, fmtJpy(remaining)))
+          )
+        ),
         el('button', { onclick: async () => {
           try {
             const r = await api(`/programs/${p.id}/issue`, {
               method: 'POST', body: JSON.stringify({ citizen_pid: pid })
             });
-            alert('PBM 発行 OK: ' + r.pbm_id + ' / 枠 ' + fmtJpy(r.remaining_jpy));
+            alert('PBM 発行完了 / 助成金枠 ' + fmtJpy(r.remaining_jpy));
             refreshAll();
           } catch (e) { alert(e.message); }
         }}, 'PBM を申請する')
       ));
     }
   }
-  // 残高
+
+  // ウォレット
   const w = await api('/wallet/citizen/' + pid);
+  const remainingTotal = w.pbm_tokens.reduce((a,t) => a + t.remaining_jpy, 0);
   document.getElementById('walletKpi').innerHTML = '';
-  document.getElementById('walletKpi').appendChild(
-    el('div', { class: 'kpi' },
-      el('div', { class: 'label' }, '通常 JPYC 残高'),
-      el('div', { class: 'value' }, fmtJpy(w.jpyc_balance))
-    )
-  );
-  document.getElementById('walletKpi').appendChild(
-    el('div', { class: 'kpi' },
-      el('div', { class: 'label' }, '保有 PBM トークン数'),
-      el('div', { class: 'value' }, w.pbm_tokens.length)
-    )
-  );
+  document.getElementById('walletKpi').appendChild(el('div', { class: 'kpi' },
+    el('div', { class: 'label' }, '通常 JPYC 残高'),
+    el('div', { class: 'value' }, fmtJpy(w.jpyc_balance)),
+    el('div', { class: 'sub' }, '対象外商品の購入や自己負担分に使用')
+  ));
+  document.getElementById('walletKpi').appendChild(el('div', { class: 'kpi navy' },
+    el('div', { class: 'label' }, '保有 PBM トークン'),
+    el('div', { class: 'value' }, w.pbm_tokens.length + ' 件')
+  ));
+  document.getElementById('walletKpi').appendChild(el('div', { class: 'kpi yellow' },
+    el('div', { class: 'label' }, 'PBM 残枠合計'),
+    el('div', { class: 'value' }, fmtJpy(remainingTotal)),
+    el('div', { class: 'sub' }, '対象 JAN を購入時に自動でアンラップ')
+  ));
+
   const pbmRoot = document.getElementById('pbmList');
   pbmRoot.innerHTML = '';
-  if (!w.pbm_tokens.length) { pbmRoot.textContent = '(なし)'; }
-  else {
+  if (!w.pbm_tokens.length) {
+    pbmRoot.className = 'empty';
+    pbmRoot.textContent = 'なし — 上のプログラムから申請してください';
+  } else {
+    pbmRoot.className = '';
     const tbl = el('table', {},
       el('thead', {}, el('tr', {},
-        el('th', {}, 'PBM ID'), el('th', {}, 'プログラム'), el('th', {}, '残枠'), el('th', {}, '失効日')
+        el('th', {}, 'PBM ID'),
+        el('th', {}, 'プログラム'),
+        el('th', { class: 'num' }, '残枠'),
+        el('th', {}, 'ステータス'),
+        el('th', {}, '失効日')
       )),
       el('tbody', {})
     );
     for (const t of w.pbm_tokens) {
       tbl.querySelector('tbody').appendChild(el('tr', {},
-        el('td', {}, t.id.slice(0,8)),
+        el('td', {}, el('code', {}, t.id.slice(0,8))),
         el('td', {}, t.program_id),
-        el('td', {}, fmtJpy(t.remaining_jpy)),
+        el('td', { class: 'num' }, fmtJpy(t.remaining_jpy)),
+        el('td', {}, el('span', { class: 'badge' }, t.status)),
         el('td', {}, t.expires_at.slice(0,10))
       ));
     }

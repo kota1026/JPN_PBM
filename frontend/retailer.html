@@ -2,41 +2,66 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<title>加盟店 POS — JPN PBM</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>加盟店レジ — JPN PBM</title>
 <link rel="stylesheet" href="/ui/styles.css">
 </head>
 <body>
-<div id="nav"></div>
-<header><h1>加盟店 POS</h1><p>JAN コードスキャン → PBM 自動適用 → JPYC 決済</p></header>
+<div id="chrome"></div>
 <main>
+
 <section>
-  <h2>レジ</h2>
+  <h2>レジ操作</h2>
+  <p class="note" style="margin-top:-6px">
+    JAN コードを入力すると商品が引き当てられ、購入時に対象プログラムの PBM が自動適用されます。
+    対象外商品の場合は通常の JPYC 決済になります。
+  </p>
   <form id="posForm">
     <div class="row">
-      <label>加盟店<select name="store_id" id="storeSel"></select></label>
-      <label>住民 PID (QR スキャン想定)<input name="citizen_pid" placeholder="HMAC pid"></label>
+      <label>加盟店
+        <select name="store_id" id="storeSel"></select>
+      </label>
+      <label>住民 PID (QR スキャン想定)
+        <input name="citizen_pid" placeholder="HMAC pid (例: badf24…)">
+      </label>
     </div>
     <div class="row">
-      <label>JAN コード<input name="jan" placeholder="13 桁" required></label>
-      <label>数量<input name="qty" type="number" value="1" min="1" required></label>
-      <button type="button" id="lookupBtn" class="secondary">商品検索</button>
+      <label>JAN コード
+        <input name="jan" placeholder="13 桁" required>
+      </label>
+      <label>数量
+        <input name="qty" type="number" value="1" min="1" required>
+      </label>
+      <button type="button" id="lookupBtn" class="ghost">商品検索</button>
     </div>
     <div id="productInfo"></div>
-    <button type="submit">PBM 決済を実行</button>
+    <div class="toolbar">
+      <button type="submit">PBM 決済を実行</button>
+      <span class="note">対象 JAN なら自動で助成適用、対象外なら通常 JPYC 決済</span>
+    </div>
     <div id="result"></div>
   </form>
 </section>
 
 <section>
   <h2>加盟店 JPYC 残高</h2>
-  <div id="storeBalance" class="kpi"><div class="label">JPYC 残高</div><div class="value">-</div></div>
+  <div class="kpi-grid">
+    <div class="kpi yellow">
+      <div class="label">受領 JPYC 残高</div>
+      <div class="value" id="storeBalance">-</div>
+      <div class="sub">PBM の助成分も自己負担分も区別せず JPYC で着金します</div>
+    </div>
+  </div>
 </section>
 
 <section>
-  <h2>商品マスタ (JAN コード参考)</h2>
-  <div id="productList"></div>
+  <h2>商品マスタ (JAN 早見表)</h2>
+  <p class="note" style="margin-top:-6px">テスト用にコピペできるよう一覧表示しています。</p>
+  <div id="productList" class="empty">読み込み中…</div>
 </section>
+
 </main>
+
 <script src="/ui/api.js"></script>
 <script>
 async function loadStores() {
@@ -49,37 +74,64 @@ async function loadStores() {
 }
 async function refreshStoreBalance(id) {
   const r = await api('/wallet/store/' + id);
-  document.querySelector('#storeBalance .value').textContent = fmtJpy(r.jpyc_balance);
+  document.getElementById('storeBalance').textContent = fmtJpy(r.jpyc_balance);
 }
 async function loadProducts() {
   const ps = await api('/products');
+  const root = document.getElementById('productList');
+  root.innerHTML = '';
+  root.className = '';
   const tbl = el('table', {},
     el('thead', {}, el('tr', {},
-      el('th', {}, 'JAN'), el('th', {}, '商品名'), el('th', {}, 'カテゴリ'), el('th', {}, '価格')
+      el('th', {}, 'JAN'),
+      el('th', {}, '商品名'),
+      el('th', {}, 'カテゴリ'),
+      el('th', { class: 'num' }, '価格'),
+      el('th', {}, '操作')
     )),
     el('tbody', {})
   );
   for (const p of ps) {
     tbl.querySelector('tbody').appendChild(el('tr', {},
-      el('td', {}, p.jan), el('td', {}, p.name), el('td', {}, p.category), el('td', {}, fmtJpy(p.price_jpy))
+      el('td', {}, el('code', {}, p.jan)),
+      el('td', {}, p.name),
+      el('td', {}, el('span', { class: 'badge gray' }, p.category)),
+      el('td', { class: 'num' }, fmtJpy(p.price_jpy)),
+      el('td', {}, el('button', {
+        class: 'ghost', style: 'padding:4px 10px; font-size:11px',
+        onclick: () => {
+          document.querySelector('input[name=jan]').value = p.jan;
+          showProductInfo(p);
+        }
+      }, '使う'))
     ));
   }
-  const root = document.getElementById('productList');
-  root.innerHTML = ''; root.appendChild(tbl);
+  root.appendChild(tbl);
 }
+function showProductInfo(p) {
+  document.getElementById('productInfo').innerHTML = '';
+  document.getElementById('productInfo').appendChild(el('div', { class: 'receipt' },
+    el('h3', {}, p.name),
+    el('div', {}, p.category + ' / 単価 ' + fmtJpy(p.price_jpy))
+  ));
+}
+
 document.getElementById('lookupBtn').addEventListener('click', async () => {
   const jan = document.querySelector('input[name=jan]').value;
   try {
     const p = await api('/products/' + jan);
-    document.getElementById('productInfo').innerHTML =
-      `<p><b>${p.name}</b> / ${p.category} / ${fmtJpy(p.price_jpy)}</p>`;
+    showProductInfo(p);
   } catch (e) {
-    document.getElementById('productInfo').innerHTML = `<p class="error">${e.message}</p>`;
+    document.getElementById('productInfo').innerHTML = '';
+    document.getElementById('productInfo').appendChild(el('div', { class: 'error' }, e.message));
   }
 });
+
 document.getElementById('posForm').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   const fd = new FormData(ev.target);
+  const out = document.getElementById('result');
+  out.innerHTML = '';
   try {
     const r = await api('/purchase', { method: 'POST', body: JSON.stringify({
       citizen_pid: fd.get('citizen_pid'),
@@ -88,22 +140,36 @@ document.getElementById('posForm').addEventListener('submit', async (ev) => {
       qty: Number(fd.get('qty')),
     })});
     const subsidyPct = r.total_jpy ? (100 * r.subsidy_jpy / r.total_jpy).toFixed(1) : '0';
-    document.getElementById('result').innerHTML =
-      `<section>
-         <h3>決済 OK</h3>
-         <div class="kpi-grid">
-           <div class="kpi"><div class="label">合計</div><div class="value">${fmtJpy(r.total_jpy)}</div></div>
-           <div class="kpi"><div class="label">助成金 (PBM)</div><div class="value">${fmtJpy(r.subsidy_jpy)}</div></div>
-           <div class="kpi"><div class="label">自己負担 (JPYC)</div><div class="value">${fmtJpy(r.citizen_pay_jpy)}</div></div>
-           <div class="kpi"><div class="label">助成率</div><div class="value">${subsidyPct}%</div></div>
-         </div>
-       </section>`;
+    const isSubsidized = r.subsidy_jpy > 0;
+    out.appendChild(el('div', { class: 'receipt' },
+      el('h3', {}, isSubsidized ? '決済完了 (PBM 助成適用)' : '決済完了 (通常 JPYC / 助成対象外)'),
+      el('div', { class: 'kpi-grid', style: 'margin-top:10px' },
+        el('div', { class: 'kpi' },
+          el('div', { class: 'label' }, '合計'),
+          el('div', { class: 'value' }, fmtJpy(r.total_jpy))
+        ),
+        el('div', { class: 'kpi navy' },
+          el('div', { class: 'label' }, '助成金 (PBM)'),
+          el('div', { class: 'value' }, fmtJpy(r.subsidy_jpy))
+        ),
+        el('div', { class: 'kpi yellow' },
+          el('div', { class: 'label' }, '自己負担 (JPYC)'),
+          el('div', { class: 'value' }, fmtJpy(r.citizen_pay_jpy))
+        ),
+        el('div', { class: 'kpi red' },
+          el('div', { class: 'label' }, '助成率'),
+          el('div', { class: 'value' }, subsidyPct + '%')
+        )
+      )
+    ));
     refreshStoreBalance(fd.get('store_id'));
   } catch (e) {
-    document.getElementById('result').innerHTML = `<p class="error">${e.message}</p>`;
+    out.appendChild(el('div', { class: 'error' }, e.message));
   }
 });
-loadStores(); loadProducts();
+
+loadStores();
+loadProducts();
 </script>
 </body>
 </html>

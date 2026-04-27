@@ -1,36 +1,402 @@
-:root { --bg: #f7f7fb; --fg: #1a1a2e; --accent: #1f6feb; --line: #e2e3eb; --warn: #d63b3b; }
+/* ============================================================
+   JPN PBM デザインシステム — 東京都ベース
+   - シンボルカラー: 東京都グリーン #00A040
+   - セカンダリ:    行政ネイビー #0E419A
+   - 警告:          東京都赤   #E60012
+   ============================================================ */
+
+:root {
+  --tokyo-green:        #00A040;
+  --tokyo-green-dark:   #007a30;
+  --tokyo-green-50:     #e6f6ec;
+  --tokyo-green-100:    #c2e8d0;
+  --tokyo-navy:         #0E419A;
+  --tokyo-navy-dark:    #0a3175;
+  --tokyo-navy-50:      #e8edf7;
+  --tokyo-red:          #E60012;
+  --tokyo-yellow:       #F8B500;
+
+  --ink:                #1a1f2c;
+  --ink-sub:            #5c6470;
+  --ink-mute:           #8e96a3;
+  --bg:                 #f4f6f9;
+  --card:               #ffffff;
+  --line:               #dfe3eb;
+  --line-strong:        #c8cdd6;
+
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 14px;
+
+  --shadow-1: 0 1px 2px rgba(20, 30, 50, .06), 0 1px 3px rgba(20, 30, 50, .04);
+  --shadow-2: 0 4px 12px rgba(20, 30, 50, .08);
+}
+
 * { box-sizing: border-box; }
-body { margin: 0; font-family: -apple-system, "Hiragino Sans", "Yu Gothic", sans-serif; color: var(--fg); background: var(--bg); }
-header { padding: 1.2rem 2rem; background: white; border-bottom: 1px solid var(--line); }
-header h1 { margin: 0 0 .2rem; font-size: 1.4rem; }
-header p { margin: 0; color: #555; font-size: .9rem; }
-main { padding: 1.5rem 2rem; }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
-.card { display: block; padding: 1.2rem; background: white; border: 1px solid var(--line); border-radius: 12px; text-decoration: none; color: inherit; }
-.card:hover { border-color: var(--accent); }
-.card h2 { margin: 0 0 .4rem; font-size: 1.1rem; }
-.card p { margin: 0; color: #666; font-size: .85rem; }
-section { background: white; padding: 1rem 1.2rem; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 1rem; }
-section h2 { margin-top: 0; font-size: 1.05rem; }
-form { display: grid; gap: .5rem; }
-label { font-size: .85rem; color: #444; }
-input, select, textarea { padding: .5rem; border: 1px solid var(--line); border-radius: 6px; font: inherit; }
-button { padding: .5rem 1rem; border: 0; border-radius: 6px; background: var(--accent); color: white; cursor: pointer; font: inherit; }
-button.secondary { background: #555; }
-button.danger { background: var(--warn); }
-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
-th, td { text-align: left; padding: .4rem .6rem; border-bottom: 1px solid var(--line); }
-th { background: #fafbfd; }
-.badge { display: inline-block; padding: .15rem .5rem; border-radius: 999px; background: #eef; color: #224; font-size: .75rem; }
-.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .8rem; }
-.kpi { padding: .8rem 1rem; background: #fafbfd; border: 1px solid var(--line); border-radius: 8px; }
-.kpi .label { font-size: .8rem; color: #666; }
-.kpi .value { font-size: 1.4rem; font-weight: 600; margin-top: .2rem; }
-.row { display: flex; gap: .5rem; align-items: center; }
-.row > * { flex: 1; }
-nav { padding: .6rem 2rem; background: white; border-bottom: 1px solid var(--line); display: flex; gap: 1rem; font-size: .9rem; }
-nav a { color: var(--accent); text-decoration: none; }
-.bar { height: 14px; background: linear-gradient(90deg, var(--accent), #6aa1ff); border-radius: 4px; }
-footer { padding: 1rem 2rem; }
-small { color: #777; }
-.error { color: var(--warn); font-size: .85rem; }
+
+html, body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN",
+               "Hiragino Sans", "Yu Gothic", "Noto Sans JP", "Helvetica Neue",
+               Arial, sans-serif;
+  font-feature-settings: "palt";
+  color: var(--ink);
+  background: var(--bg);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+a { color: var(--tokyo-navy); }
+
+/* ========== Top bar (東京都ヘッダー風) ========== */
+.tmg-bar {
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 24px;
+}
+.tmg-bar .logo {
+  width: 36px; height: 36px;
+}
+.tmg-bar .brand {
+  display: flex; flex-direction: column; line-height: 1.15;
+}
+.tmg-bar .brand .org { font-size: 11px; color: var(--ink-sub); letter-spacing: .12em; }
+.tmg-bar .brand .name { font-size: 16px; font-weight: 700; color: var(--ink); }
+.tmg-bar .brand .name em { color: var(--tokyo-green); font-style: normal; }
+.tmg-bar .spacer { flex: 1; }
+.tmg-bar .meta { font-size: 11px; color: var(--ink-mute); }
+
+/* ========== Top accent (東京都グリーンの帯) ========== */
+.tmg-accent {
+  height: 4px;
+  background: linear-gradient(90deg,
+    var(--tokyo-green) 0%, var(--tokyo-green) 60%,
+    var(--tokyo-navy) 60%, var(--tokyo-navy) 90%,
+    var(--tokyo-red) 90%, var(--tokyo-red) 100%);
+}
+
+/* ========== Navigation ========== */
+.nav {
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 0;
+  padding: 0 24px;
+  overflow-x: auto;
+}
+.nav a {
+  padding: 12px 16px;
+  text-decoration: none;
+  color: var(--ink-sub);
+  font-weight: 500;
+  border-bottom: 3px solid transparent;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.nav a:hover { color: var(--tokyo-green-dark); }
+.nav a.active {
+  color: var(--tokyo-green-dark);
+  border-bottom-color: var(--tokyo-green);
+  font-weight: 600;
+}
+
+/* ========== Page hero ========== */
+.hero {
+  padding: 28px 24px 8px;
+}
+.hero h1 {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.hero h1 .pill {
+  display: inline-block;
+  background: var(--tokyo-green-50);
+  color: var(--tokyo-green-dark);
+  border: 1px solid var(--tokyo-green-100);
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: middle;
+  margin-left: 8px;
+}
+.hero p { margin: 0; color: var(--ink-sub); font-size: 13px; }
+
+/* ========== Layout ========== */
+main { padding: 16px 24px 48px; max-width: 1280px; margin: 0 auto; }
+
+section {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 18px 20px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-1);
+}
+section > h2 {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  display: flex; align-items: center; gap: 8px;
+}
+section > h2::before {
+  content: "";
+  width: 4px; height: 16px;
+  background: var(--tokyo-green);
+  border-radius: 2px;
+}
+section h3 { font-size: 13px; margin: 16px 0 8px; color: var(--ink); }
+
+/* ========== Tile grid (top) ========== */
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+.tile {
+  display: block;
+  padding: 18px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--tokyo-green);
+  border-radius: var(--r-md);
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow .15s, transform .15s;
+}
+.tile:hover { box-shadow: var(--shadow-2); transform: translateY(-2px); }
+.tile.tile-citizen { border-left-color: var(--tokyo-navy); }
+.tile.tile-retailer { border-left-color: var(--tokyo-yellow); }
+.tile.tile-ebpm { border-left-color: var(--tokyo-red); }
+.tile h2 { margin: 0 0 4px; font-size: 16px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 6px; }
+.tile h2::before { content: none; }
+.tile p { margin: 0; font-size: 12px; color: var(--ink-sub); line-height: 1.55; }
+.tile .tile-role {
+  display: inline-block; font-size: 10px; letter-spacing: .1em;
+  color: var(--tokyo-green-dark); background: var(--tokyo-green-50);
+  padding: 2px 6px; border-radius: 4px; margin-bottom: 10px; font-weight: 700;
+}
+.tile.tile-citizen  .tile-role { color: var(--tokyo-navy-dark); background: var(--tokyo-navy-50); }
+.tile.tile-retailer .tile-role { color: #8a5a00; background: #fff5d8; }
+.tile.tile-ebpm     .tile-role { color: #a8000c; background: #fde6e8; }
+
+/* ========== Forms ========== */
+form { display: grid; gap: 12px; }
+label {
+  display: flex; flex-direction: column;
+  font-size: 12px; color: var(--ink-sub); font-weight: 500;
+  gap: 4px;
+}
+input, select, textarea {
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  font: inherit;
+  background: #fff;
+  color: var(--ink);
+}
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid var(--tokyo-green);
+  outline-offset: -1px;
+  border-color: var(--tokyo-green);
+}
+textarea { min-height: 60px; resize: vertical; }
+
+button, .btn {
+  padding: 9px 16px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--tokyo-green);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  font-size: 13px;
+  transition: background .12s;
+}
+button:hover, .btn:hover { background: var(--tokyo-green-dark); }
+button.secondary, .btn.secondary { background: var(--tokyo-navy); }
+button.secondary:hover { background: var(--tokyo-navy-dark); }
+button.ghost {
+  background: #fff; color: var(--tokyo-navy);
+  border: 1px solid var(--line-strong);
+}
+button.ghost:hover { background: var(--tokyo-navy-50); border-color: var(--tokyo-navy); }
+button.danger { background: var(--tokyo-red); }
+button.danger:hover { background: #b3000e; }
+button:disabled { background: var(--ink-mute); cursor: not-allowed; }
+
+.row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.row > * { flex: 1; min-width: 140px; }
+.row > button { flex: 0 0 auto; }
+
+/* ========== Tables ========== */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td {
+  text-align: left;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+}
+th {
+  background: #fafbfd;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: .04em;
+  color: var(--ink-sub);
+  text-transform: uppercase;
+}
+tbody tr:hover { background: #f9fafc; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+td code { font-size: 11px; color: var(--ink-sub); }
+
+/* ========== Pills / Badges ========== */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--tokyo-green-50);
+  color: var(--tokyo-green-dark);
+}
+.badge.navy   { background: var(--tokyo-navy-50); color: var(--tokyo-navy-dark); }
+.badge.red    { background: #fde6e8; color: #a8000c; }
+.badge.gray   { background: #eceef3; color: var(--ink-sub); }
+.badge.yellow { background: #fff5d8; color: #8a5a00; }
+
+/* ========== KPI grid ========== */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+.kpi {
+  background: linear-gradient(180deg, #fff, #fbfcfe);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  position: relative;
+  overflow: hidden;
+}
+.kpi::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px; background: var(--tokyo-green);
+}
+.kpi.navy::before  { background: var(--tokyo-navy); }
+.kpi.red::before   { background: var(--tokyo-red); }
+.kpi.yellow::before{ background: var(--tokyo-yellow); }
+
+.kpi .label {
+  font-size: 11px; color: var(--ink-sub);
+  letter-spacing: .04em;
+}
+.kpi .value {
+  font-size: 22px;
+  font-weight: 700;
+  margin-top: 4px;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.kpi .sub {
+  font-size: 11px; color: var(--ink-mute); margin-top: 2px;
+}
+
+/* ========== Cards (programs etc.) ========== */
+.prog-card {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  background: #fff;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 16px;
+  align-items: start;
+}
+.prog-card h3 { margin: 0 0 4px; font-size: 14px; }
+.prog-card .desc { font-size: 12px; color: var(--ink-sub); margin: 0; }
+.prog-card .meta { font-size: 11px; color: var(--ink-mute); margin-top: 6px; display: flex; gap: 12px; flex-wrap: wrap; }
+
+/* ========== Bars (for breakdown) ========== */
+.bar-track { background: var(--tokyo-green-50); border-radius: 3px; height: 14px; min-width: 40px; }
+.bar { height: 14px; background: var(--tokyo-green); border-radius: 3px; }
+
+/* ========== Receipt-like result ========== */
+.receipt {
+  border: 1px dashed var(--tokyo-green);
+  background: var(--tokyo-green-50);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  margin-top: 12px;
+}
+.receipt h3 {
+  margin: 0 0 8px;
+  color: var(--tokyo-green-dark);
+  font-size: 14px;
+  display: flex; align-items: center; gap: 6px;
+}
+.receipt h3::before {
+  content: "\2713";
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--tokyo-green); color: #fff; font-size: 11px;
+}
+
+/* ========== Misc ========== */
+.error {
+  color: var(--tokyo-red);
+  background: #fde6e8;
+  padding: 8px 12px;
+  border-radius: var(--r-sm);
+  font-size: 12px;
+}
+.note {
+  color: var(--ink-mute);
+  font-size: 11px;
+  margin-top: 6px;
+}
+.toolbar {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.toolbar .grow { flex: 1; }
+.divider { height: 1px; background: var(--line); margin: 12px 0; }
+
+/* ========== Loader ========== */
+.loading {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid var(--tokyo-green-100);
+  border-top-color: var(--tokyo-green);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ========== Inline gingko logo ========== */
+.gingko {
+  width: 36px; height: 36px;
+  display: block;
+}
+
+/* ========== Empty state ========== */
+.empty {
+  padding: 24px 12px; text-align: center; color: var(--ink-mute); font-size: 12px;
+}
+
+@media (max-width: 720px) {
+  .tmg-bar { padding: 10px 12px; }
+  main { padding: 12px; }
+  .nav { padding: 0 12px; }
+  .hero { padding: 20px 12px 0; }
+}
