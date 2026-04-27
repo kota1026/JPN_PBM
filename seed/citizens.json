@@ -1,0 +1,12 @@
+[
+  {"maina_id": "MN-0001", "name": "山田 太郎",   "address": "東京都新宿区西新宿2-8-1",   "ward": "新宿区",   "dob": "1955-03-12", "gender": "M"},
+  {"maina_id": "MN-0002", "name": "佐藤 花子",   "address": "東京都渋谷区道玄坂1-1-1",   "ward": "渋谷区",   "dob": "1990-08-22", "gender": "F"},
+  {"maina_id": "MN-0003", "name": "鈴木 一郎",   "address": "東京都江東区豊洲3-2-2",     "ward": "江東区",   "dob": "1988-11-05", "gender": "M"},
+  {"maina_id": "MN-0004", "name": "高橋 美咲",   "address": "東京都世田谷区三軒茶屋2-1", "ward": "世田谷区", "dob": "1985-05-30", "gender": "F"},
+  {"maina_id": "MN-0005", "name": "田中 健司",   "address": "東京都千代田区神田1-2-3",   "ward": "千代田区", "dob": "1948-12-01", "gender": "M"},
+  {"maina_id": "MN-0006", "name": "渡辺 由美",   "address": "東京都新宿区高田馬場4-5-6", "ward": "新宿区",   "dob": "1992-02-14", "gender": "F"},
+  {"maina_id": "MN-0007", "name": "伊藤 翔",     "address": "東京都江東区有明2-1-8",     "ward": "江東区",   "dob": "1958-07-19", "gender": "M"},
+  {"maina_id": "MN-0008", "name": "中村 さくら", "address": "東京都渋谷区恵比寿1-2-3",   "ward": "渋谷区",   "dob": "1995-01-25", "gender": "F"},
+  {"maina_id": "MN-0009", "name": "小林 拓海",   "address": "東京都世田谷区下北沢1-1-1", "ward": "世田谷区", "dob": "1987-09-09", "gender": "M"},
+  {"maina_id": "MN-0010", "name": "加藤 美樹",   "address": "東京都千代田区丸の内1-1-1", "ward": "千代田区", "dob": "1953-04-04", "gender": "F"}
+]

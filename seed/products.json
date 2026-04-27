@@ -1,0 +1,12 @@
+[
+  {"jan": "4901234567890", "name": "省エネ8畳エアコン EX-2025", "category": "appliance.air_conditioner", "price_jpy": 120000},
+  {"jan": "4901234567891", "name": "省エネ冷蔵庫 400L NEO",     "category": "appliance.refrigerator",     "price_jpy": 180000},
+  {"jan": "4901234567892", "name": "LED シーリングライト 12畳",  "category": "appliance.light",            "price_jpy": 18000},
+  {"jan": "4912345678901", "name": "粉ミルク 800g",              "category": "food.baby",                  "price_jpy": 2800},
+  {"jan": "4912345678902", "name": "ベビーフード 7か月 12個",    "category": "food.baby",                  "price_jpy": 1800},
+  {"jan": "4912345678903", "name": "おむつ M 64枚",              "category": "goods.baby",                 "price_jpy": 1500},
+  {"jan": "4923456789012", "name": "高血圧薬 ジェネリック 30錠", "category": "med.rx",                     "price_jpy": 3200},
+  {"jan": "4923456789013", "name": "シニア向けプロテイン 800g",  "category": "med.supplement",             "price_jpy": 4200},
+  {"jan": "4934567890121", "name": "おにぎり 鮭",                "category": "food.daily",                 "price_jpy": 180},
+  {"jan": "4934567890122", "name": "牛乳 1L",                    "category": "food.daily",                 "price_jpy": 280}
+]

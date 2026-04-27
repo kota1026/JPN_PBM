@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>JPN PBM — 東京都ステーブルコイン助成金 MVP</title>
+<link rel="stylesheet" href="/ui/styles.css">
+</head>
+<body>
+<header>
+  <h1>JPN PBM</h1>
+  <p>東京都ステーブルコイン助成金 PBM MVP</p>
+</header>
+<main class="grid">
+  <a class="card" href="/ui/tokyo.html"><h2>東京都管理</h2><p>助成金プログラムの作成・予算管理</p></a>
+  <a class="card" href="/ui/citizen.html"><h2>住民ウォレット</h2><p>マイナンバー認証 + PBM/JPYC 残高 + 購入</p></a>
+  <a class="card" href="/ui/retailer.html"><h2>加盟店 POS</h2><p>JAN スキャンで PBM 決済</p></a>
+  <a class="card" href="/ui/ebpm.html"><h2>EBPM ダッシュボード</h2><p>政策効果の可視化</p></a>
+</main>
+<footer>
+  <button id="seedBtn">デモデータをロード</button>
+  <span id="seedStatus"></span>
+</footer>
+<script src="/ui/api.js"></script>
+<script>
+document.getElementById('seedBtn').addEventListener('click', async () => {
+  const r = await api('/seed/load', {method: 'POST'});
+  document.getElementById('seedStatus').textContent =
+    'OK: トレジャリー入金済 / マイナID→pid マップ件数 ' + Object.keys(r.pid_map).length;
+});
+</script>
+</body>
+</html>

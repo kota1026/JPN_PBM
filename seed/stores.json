@@ -1,0 +1,7 @@
+[
+  {"id": "store-bic-shinjuku",   "name": "ビック家電 新宿東口店",   "ward": "新宿区"},
+  {"id": "store-yodobashi-aki",  "name": "ヨドバシ秋葉原店",         "ward": "千代田区"},
+  {"id": "store-aeon-koto",      "name": "イオン江東店",             "ward": "江東区"},
+  {"id": "store-summit-setaga",  "name": "サミット世田谷店",         "ward": "世田谷区"},
+  {"id": "store-matsumoto-shib", "name": "マツモトキヨシ渋谷店",     "ward": "渋谷区"}
+]
