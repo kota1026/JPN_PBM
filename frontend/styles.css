@@ -483,12 +483,77 @@ td code { font-size: 11px; color: var(--ink-sub); }
 .cat-row {
   display: flex; align-items: center; justify-content: space-between;
   padding: 6px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;
+  gap: 6px;
 }
 .cat-row:hover { background: var(--tokyo-green-50); }
 .cat-row.active {
   background: var(--tokyo-green); color: #fff; font-weight: 600;
 }
 .cat-row.active .badge { background: rgba(255,255,255,.25); color: #fff; }
+.cat-row.cat-parent { font-size: 13px; }
+.cat-row.cat-parent + .cat-row.cat-child { margin-top: -2px; }
+.cat-row.cat-child { padding-left: 26px; color: var(--ink-sub); }
+.cat-row.cat-child.active { color: #fff; }
+.cat-toggle {
+  display: inline-block; width: 12px; color: var(--ink-mute); cursor: pointer;
+  font-size: 10px; user-select: none;
+}
+.cat-row.active .cat-toggle { color: rgba(255,255,255,.85); }
+
+/* ===== Rich product card (picker 中央ペイン) ===== */
+.pick-row.prod-card {
+  align-items: flex-start;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  margin-bottom: 4px;
+}
+.pick-row.prod-card:hover { border-color: var(--line); background: #f9fafc; }
+.pick-row.prod-card.in-eligible { border-color: var(--tokyo-green-100); }
+.pick-row.prod-card.in-excluded { border-color: #f5b9be; }
+.prod-icon {
+  width: 28px; height: 28px; border-radius: 6px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 16px; flex: 0 0 28px;
+}
+.prod-name { font-weight: 600; font-size: 12.5px; color: var(--ink); line-height: 1.4; }
+.prod-meta {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-top: 3px;
+  font-size: 10.5px; align-items: center;
+}
+.prod-meta .cat {
+  font-size: 10.5px; padding: 1px 6px; border-radius: 999px; font-weight: 600;
+}
+.prod-meta .jan {
+  font-family: ui-monospace, monospace; color: var(--ink-mute);
+}
+.prod-meta .price { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.prod-status {
+  font-size: 10.5px; margin-top: 4px; font-weight: 600;
+}
+.prod-status.ok { color: var(--tokyo-green-dark); }
+.prod-status.ng { color: var(--tokyo-red); }
+
+/* ===== Empty-state CTA (商品マスタ未投入) ===== */
+.empty-cta {
+  text-align: center;
+  padding: 22px 12px;
+  border: 1px dashed var(--tokyo-green);
+  background: var(--tokyo-green-50);
+  border-radius: var(--r-md);
+  margin: 4px;
+}
+.empty-cta-icon { font-size: 36px; line-height: 1; margin-bottom: 6px; }
+.empty-cta h3 { margin: 0 0 6px; font-size: 14px; color: var(--tokyo-green-dark); }
+.empty-cta p {
+  margin: 0 auto 12px; font-size: 12px; color: var(--ink-sub);
+  max-width: 340px; line-height: 1.55;
+}
+.empty-cta .btn { font-size: 13px; padding: 10px 18px; }
+.empty-cta .note { margin-top: 8px; }
+
+/* ===== Picker 検索ヒント ===== */
+.picker-head .note { font-size: 11px; color: var(--ink-mute); }
+.picker-head .note b { color: var(--ink); font-weight: 600; }
 
 /* QR */
 .qr-card {

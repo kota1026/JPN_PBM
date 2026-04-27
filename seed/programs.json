@@ -11,7 +11,7 @@
     "eligibility": {
       "wards": ["新宿区","渋谷区","世田谷区","江東区","千代田区","港区","目黒区","品川区","中央区","文京区","台東区","墨田区","北区","荒川区","板橋区","練馬区","足立区","葛飾区","江戸川区","豊島区","中野区","杉並区","大田区"]
     },
-    "eligible_categories": ["appliance.air_conditioner","appliance.refrigerator","appliance.light"],
+    "eligible_categories": ["appliance.air_conditioner","appliance.refrigerator","appliance.light","appliance.washer","appliance.kitchen"],
     "eligible_jans": [],
     "excluded_jans": [],
     "approved_stores": ["store-bic-shinjuku","store-yodobashi-aki","store-aeon-koto"]
@@ -48,7 +48,41 @@
       "wards": ["新宿区","渋谷区","世田谷区","江東区","千代田区"],
       "min_age": 65
     },
-    "eligible_categories": ["med.rx","med.supplement"],
+    "eligible_categories": ["med.rx","med.otc","med.supplement"],
+    "eligible_jans": [],
+    "excluded_jans": [],
+    "approved_stores": ["store-matsumoto-shib","store-aeon-koto","store-summit-setaga"]
+  },
+  {
+    "id": "prog-disaster-2026",
+    "name": "防災備蓄品購入支援 2026",
+    "description": "都内全世帯を対象に、防災備蓄 (保存水・非常食・防災用品) の購入額の50%を助成 (上限1万円)。",
+    "budget_jpy": 15000000,
+    "subsidy_bps": 5000,
+    "per_citizen_cap_jpy": 10000,
+    "start_at": "2026-04-01T00:00:00",
+    "end_at":   "2026-12-31T23:59:59",
+    "eligibility": {
+      "wards": ["新宿区","渋谷区","世田谷区","江東区","千代田区","港区","目黒区","品川区","中央区","文京区","台東区","墨田区","北区","荒川区","板橋区","練馬区","足立区","葛飾区","江戸川区","豊島区","中野区","杉並区","大田区"]
+    },
+    "eligible_categories": ["disaster.water","disaster.food","disaster.gear"],
+    "eligible_jans": [],
+    "excluded_jans": [],
+    "approved_stores": ["store-bic-shinjuku","store-yodobashi-aki","store-aeon-koto","store-summit-setaga"]
+  },
+  {
+    "id": "prog-care-2026",
+    "name": "在宅介護用品支援 2026",
+    "description": "在宅介護を行う世帯向け。大人用紙おむつ・尿とりパッド等の介護消耗品の50%を助成 (上限1.5万円)。",
+    "budget_jpy": 12000000,
+    "subsidy_bps": 5000,
+    "per_citizen_cap_jpy": 15000,
+    "start_at": "2026-04-01T00:00:00",
+    "end_at":   "2026-12-31T23:59:59",
+    "eligibility": {
+      "wards": ["新宿区","渋谷区","世田谷区","江東区","千代田区"]
+    },
+    "eligible_categories": ["care.adult","care.equipment"],
     "eligible_jans": [],
     "excluded_jans": [],
     "approved_stores": ["store-matsumoto-shib","store-aeon-koto","store-summit-setaga"]

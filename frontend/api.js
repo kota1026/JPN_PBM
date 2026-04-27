@@ -39,6 +39,67 @@ function fmtPct(n, digits = 1) {
   return (n * 100).toFixed(digits) + '%';
 }
 
+/* ============================================================
+   カテゴリ辞書 — 大分類 (parent) と日本語ラベル
+   サーバーは "appliance.air_conditioner" のような ID を返すが、
+   UI では「家電 / エアコン」のように人間にやさしい表記にする。
+   ============================================================ */
+const CATEGORY_PARENTS = {
+  appliance: { label: '家電',     icon: '🔌', color: '#0E419A' },
+  food:      { label: '食品',     icon: '🍙', color: '#E60012' },
+  goods:     { label: '日用品',   icon: '🧴', color: '#8a5a00' },
+  med:       { label: '医薬品',   icon: '💊', color: '#a8000c' },
+  disaster:  { label: '防災',     icon: '🛟', color: '#c45a00' },
+  care:      { label: '介護',     icon: '🧓', color: '#5a3aa8' },
+  school:    { label: '学用品',   icon: '🎒', color: '#0a3175' },
+};
+
+const CATEGORY_LABELS = {
+  'appliance.air_conditioner': 'エアコン',
+  'appliance.refrigerator':    '冷蔵庫',
+  'appliance.light':           '照明',
+  'appliance.washer':          '洗濯機',
+  'appliance.kitchen':         'キッチン家電',
+  'food.baby':                 '乳幼児食品',
+  'food.daily':                '日常食品',
+  'goods.baby':                '育児用品',
+  'med.rx':                    '処方薬',
+  'med.otc':                   '市販薬',
+  'med.supplement':            'サプリ・栄養食品',
+  'disaster.water':            '保存水',
+  'disaster.food':             '非常食',
+  'disaster.gear':             '防災用品',
+  'care.adult':                '介護消耗品',
+  'care.equipment':            '介護用品',
+  'school.stationery':         '文房具',
+  'school.bag':                'ランドセル',
+};
+
+function catParent(id) {
+  return (id || '').split('.')[0];
+}
+function catParentMeta(id) {
+  return CATEGORY_PARENTS[catParent(id)] || { label: catParent(id) || 'その他', icon: '📦', color: '#5c6470' };
+}
+function catLabel(id) {
+  return CATEGORY_LABELS[id] || (id || '').split('.').slice(1).join('.') || id;
+}
+/** "家電 / エアコン" のように親+子で表示 */
+function catFullLabel(id) {
+  const p = catParentMeta(id).label;
+  const c = catLabel(id);
+  return p === c ? p : `${p} / ${c}`;
+}
+/** 検索文字列に対する商品マッチ判定 (商品名 + JAN + 親/子ラベル + ID) */
+function productMatches(p, q) {
+  if (!q) return true;
+  const hay = [
+    p.name, p.jan, p.category,
+    catLabel(p.category), catParentMeta(p.category).label, catFullLabel(p.category),
+  ].join(' ').toLowerCase();
+  return q.toLowerCase().split(/\s+/).filter(Boolean).every(t => hay.includes(t));
+}
+
 /* ===== 銀杏マーク (東京都シンボル風) を SVG で ===== */
 const GINGKO_SVG = `
 <svg class="gingko" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
