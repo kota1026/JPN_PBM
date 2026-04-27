@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>加盟店 POS — JPN PBM</title>
+<link rel="stylesheet" href="/ui/styles.css">
+</head>
+<body>
+<div id="nav"></div>
+<header><h1>加盟店 POS</h1><p>JAN コードスキャン → PBM 自動適用 → JPYC 決済</p></header>
+<main>
+<section>
+  <h2>レジ</h2>
+  <form id="posForm">
+    <div class="row">
+      <label>加盟店<select name="store_id" id="storeSel"></select></label>
+      <label>住民 PID (QR スキャン想定)<input name="citizen_pid" placeholder="HMAC pid"></label>
+    </div>
+    <div class="row">
+      <label>JAN コード<input name="jan" placeholder="13 桁" required></label>
+      <label>数量<input name="qty" type="number" value="1" min="1" required></label>
+      <button type="button" id="lookupBtn" class="secondary">商品検索</button>
+    </div>
+    <div id="productInfo"></div>
+    <button type="submit">PBM 決済を実行</button>
+    <div id="result"></div>
+  </form>
+</section>
+
+<section>
+  <h2>加盟店 JPYC 残高</h2>
+  <div id="storeBalance" class="kpi"><div class="label">JPYC 残高</div><div class="value">-</div></div>
+</section>
+
+<section>
+  <h2>商品マスタ (JAN コード参考)</h2>
+  <div id="productList"></div>
+</section>
+</main>
+<script src="/ui/api.js"></script>
+<script>
+async function loadStores() {
+  const stores = await api('/stores');
+  const sel = document.getElementById('storeSel');
+  sel.innerHTML = '';
+  for (const s of stores) sel.appendChild(el('option', { value: s.id }, `${s.name} (${s.ward})`));
+  if (stores.length) refreshStoreBalance(stores[0].id);
+  sel.addEventListener('change', () => refreshStoreBalance(sel.value));
+}
+async function refreshStoreBalance(id) {
+  const r = await api('/wallet/store/' + id);
+  document.querySelector('#storeBalance .value').textContent = fmtJpy(r.jpyc_balance);
+}
+async function loadProducts() {
+  const ps = await api('/products');
+  const tbl = el('table', {},
+    el('thead', {}, el('tr', {},
+      el('th', {}, 'JAN'), el('th', {}, '商品名'), el('th', {}, 'カテゴリ'), el('th', {}, '価格')
+    )),
+    el('tbody', {})
+  );
+  for (const p of ps) {
+    tbl.querySelector('tbody').appendChild(el('tr', {},
+      el('td', {}, p.jan), el('td', {}, p.name), el('td', {}, p.category), el('td', {}, fmtJpy(p.price_jpy))
+    ));
+  }
+  const root = document.getElementById('productList');
+  root.innerHTML = ''; root.appendChild(tbl);
+}
+document.getElementById('lookupBtn').addEventListener('click', async () => {
+  const jan = document.querySelector('input[name=jan]').value;
+  try {
+    const p = await api('/products/' + jan);
+    document.getElementById('productInfo').innerHTML =
+      `<p><b>${p.name}</b> / ${p.category} / ${fmtJpy(p.price_jpy)}</p>`;
+  } catch (e) {
+    document.getElementById('productInfo').innerHTML = `<p class="error">${e.message}</p>`;
+  }
+});
+document.getElementById('posForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const fd = new FormData(ev.target);
+  try {
+    const r = await api('/purchase', { method: 'POST', body: JSON.stringify({
+      citizen_pid: fd.get('citizen_pid'),
+      store_id: fd.get('store_id'),
+      jan: fd.get('jan'),
+      qty: Number(fd.get('qty')),
+    })});
+    const subsidyPct = r.total_jpy ? (100 * r.subsidy_jpy / r.total_jpy).toFixed(1) : '0';
+    document.getElementById('result').innerHTML =
+      `<section>
+         <h3>決済 OK</h3>
+         <div class="kpi-grid">
+           <div class="kpi"><div class="label">合計</div><div class="value">${fmtJpy(r.total_jpy)}</div></div>
+           <div class="kpi"><div class="label">助成金 (PBM)</div><div class="value">${fmtJpy(r.subsidy_jpy)}</div></div>
+           <div class="kpi"><div class="label">自己負担 (JPYC)</div><div class="value">${fmtJpy(r.citizen_pay_jpy)}</div></div>
+           <div class="kpi"><div class="label">助成率</div><div class="value">${subsidyPct}%</div></div>
+         </div>
+       </section>`;
+    refreshStoreBalance(fd.get('store_id'));
+  } catch (e) {
+    document.getElementById('result').innerHTML = `<p class="error">${e.message}</p>`;
+  }
+});
+loadStores(); loadProducts();
+</script>
+</body>
+</html>

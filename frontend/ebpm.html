@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>EBPM ダッシュボード — JPN PBM</title>
+<link rel="stylesheet" href="/ui/styles.css">
+</head>
+<body>
+<div id="nav"></div>
+<header><h1>EBPM ダッシュボード</h1><p>助成金プログラムの政策効果を匿名集計で可視化</p></header>
+<main>
+<section>
+  <div class="row">
+    <label>プログラム<select id="programSel"></select></label>
+    <button id="reloadBtn" class="secondary">再読み込み</button>
+  </div>
+</section>
+
+<section>
+  <h2>サマリ</h2>
+  <div id="summary" class="kpi-grid"></div>
+</section>
+
+<section>
+  <h2>軸別ブレイクダウン</h2>
+  <div class="row">
+    <label>軸<select id="dimSel">
+      <option value="age_band">年齢階級</option>
+      <option value="gender">性別</option>
+      <option value="ward">居住区</option>
+      <option value="category">商品カテゴリ</option>
+      <option value="store_ward">店舗区</option>
+      <option value="date">日付</option>
+    </select></label>
+  </div>
+  <div id="breakdown"></div>
+  <small>※ ユニーク人数 5 未満のセルは k-匿名性のため "-" に丸めています。</small>
+</section>
+</main>
+<script src="/ui/api.js"></script>
+<script>
+async function loadPrograms() {
+  const list = await api('/programs');
+  const sel = document.getElementById('programSel');
+  sel.innerHTML = '<option value="">(全プログラム)</option>';
+  for (const p of list) sel.appendChild(el('option', { value: p.id }, `${p.id}: ${p.name}`));
+  sel.addEventListener('change', refresh);
+}
+async function refresh() {
+  const programId = document.getElementById('programSel').value;
+  const dim = document.getElementById('dimSel').value;
+
+  // サマリ
+  const s = await api('/ebpm/summary' + (programId ? '?program_id=' + encodeURIComponent(programId) : ''));
+  const sum = s.length === 1 ? s[0] : s.reduce((a, b) => ({
+    tx_count: (a.tx_count||0)+b.tx_count,
+    unique_citizens: Math.max(a.unique_citizens||0, b.unique_citizens||0),
+    total_jpy: (a.total_jpy||0)+b.total_jpy,
+    subsidy_jpy: (a.subsidy_jpy||0)+b.subsidy_jpy,
+    citizen_pay_jpy: (a.citizen_pay_jpy||0)+b.citizen_pay_jpy,
+  }), {});
+  const root = document.getElementById('summary');
+  root.innerHTML = '';
+  const kpi = (label, value) => {
+    root.appendChild(el('div', { class: 'kpi' },
+      el('div', { class: 'label' }, label),
+      el('div', { class: 'value' }, value)
+    ));
+  };
+  kpi('取引件数', (sum.tx_count || 0).toLocaleString());
+  kpi('受給ユニーク住民数', (sum.unique_citizens || 0).toLocaleString());
+  kpi('総購入額', fmtJpy(sum.total_jpy || 0));
+  kpi('助成金額', fmtJpy(sum.subsidy_jpy || 0));
+  kpi('自己負担合計', fmtJpy(sum.citizen_pay_jpy || 0));
+  if (sum.subsidy_jpy) {
+    kpi('レバレッジ (自己負担/助成)', ((sum.citizen_pay_jpy||0)/sum.subsidy_jpy).toFixed(2) + '×');
+  }
+
+  // ブレイクダウン
+  const rows = await api('/ebpm/breakdown?dim=' + dim + (programId ? '&program_id=' + encodeURIComponent(programId) : ''));
+  const tbl = el('table', {},
+    el('thead', {}, el('tr', {},
+      el('th', {}, dim), el('th', {}, '取引件数'), el('th', {}, '人数'),
+      el('th', {}, '総額'), el('th', {}, '助成額'), el('th', {}, '助成額バー')
+    )),
+    el('tbody', {})
+  );
+  let max = 0;
+  for (const r of rows) if (typeof r.subsidy_jpy === 'number') max = Math.max(max, r.subsidy_jpy);
+  for (const r of rows) {
+    const w = (typeof r.subsidy_jpy === 'number' && max) ? (r.subsidy_jpy / max * 200) : 0;
+    tbl.querySelector('tbody').appendChild(el('tr', {},
+      el('td', {}, r.key),
+      el('td', {}, String(r.tx_count)),
+      el('td', {}, String(r.unique_citizens)),
+      el('td', {}, fmtJpy(r.total_jpy)),
+      el('td', {}, fmtJpy(r.subsidy_jpy)),
+      el('td', {}, w ? el('div', { class: 'bar', style: `width:${w}px` }) : document.createTextNode('-'))
+    ));
+  }
+  const bd = document.getElementById('breakdown');
+  bd.innerHTML = ''; bd.appendChild(tbl);
+}
+document.getElementById('dimSel').addEventListener('change', refresh);
+document.getElementById('reloadBtn').addEventListener('click', refresh);
+loadPrograms().then(refresh);
+</script>
+</body>
+</html>

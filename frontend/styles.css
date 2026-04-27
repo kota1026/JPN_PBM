@@ -1,0 +1,36 @@
+:root { --bg: #f7f7fb; --fg: #1a1a2e; --accent: #1f6feb; --line: #e2e3eb; --warn: #d63b3b; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: -apple-system, "Hiragino Sans", "Yu Gothic", sans-serif; color: var(--fg); background: var(--bg); }
+header { padding: 1.2rem 2rem; background: white; border-bottom: 1px solid var(--line); }
+header h1 { margin: 0 0 .2rem; font-size: 1.4rem; }
+header p { margin: 0; color: #555; font-size: .9rem; }
+main { padding: 1.5rem 2rem; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+.card { display: block; padding: 1.2rem; background: white; border: 1px solid var(--line); border-radius: 12px; text-decoration: none; color: inherit; }
+.card:hover { border-color: var(--accent); }
+.card h2 { margin: 0 0 .4rem; font-size: 1.1rem; }
+.card p { margin: 0; color: #666; font-size: .85rem; }
+section { background: white; padding: 1rem 1.2rem; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 1rem; }
+section h2 { margin-top: 0; font-size: 1.05rem; }
+form { display: grid; gap: .5rem; }
+label { font-size: .85rem; color: #444; }
+input, select, textarea { padding: .5rem; border: 1px solid var(--line); border-radius: 6px; font: inherit; }
+button { padding: .5rem 1rem; border: 0; border-radius: 6px; background: var(--accent); color: white; cursor: pointer; font: inherit; }
+button.secondary { background: #555; }
+button.danger { background: var(--warn); }
+table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+th, td { text-align: left; padding: .4rem .6rem; border-bottom: 1px solid var(--line); }
+th { background: #fafbfd; }
+.badge { display: inline-block; padding: .15rem .5rem; border-radius: 999px; background: #eef; color: #224; font-size: .75rem; }
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .8rem; }
+.kpi { padding: .8rem 1rem; background: #fafbfd; border: 1px solid var(--line); border-radius: 8px; }
+.kpi .label { font-size: .8rem; color: #666; }
+.kpi .value { font-size: 1.4rem; font-weight: 600; margin-top: .2rem; }
+.row { display: flex; gap: .5rem; align-items: center; }
+.row > * { flex: 1; }
+nav { padding: .6rem 2rem; background: white; border-bottom: 1px solid var(--line); display: flex; gap: 1rem; font-size: .9rem; }
+nav a { color: var(--accent); text-decoration: none; }
+.bar { height: 14px; background: linear-gradient(90deg, var(--accent), #6aa1ff); border-radius: 4px; }
+footer { padding: 1rem 2rem; }
+small { color: #777; }
+.error { color: var(--warn); font-size: .85rem; }

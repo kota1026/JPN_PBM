@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>東京都管理 — JPN PBM</title>
+<link rel="stylesheet" href="/ui/styles.css">
+</head>
+<body>
+<div id="nav"></div>
+<header><h1>東京都管理</h1><p>助成金プログラム CRUD・予算ロック</p></header>
+<main>
+<section>
+  <h2>トレジャリー残高</h2>
+  <div class="row">
+    <div id="treasuryBalance" class="kpi" style="flex: 0 0 240px"><div class="label">JPYC 残高</div><div class="value">-</div></div>
+    <form id="topupForm" class="row" style="flex: 1">
+      <input type="number" name="amount" placeholder="入金額 (JPYC)" min="1" required>
+      <button type="submit">トレジャリーに入金</button>
+    </form>
+  </div>
+</section>
+
+<section>
+  <h2>プログラム一覧</h2>
+  <div id="programList"></div>
+</section>
+
+<section>
+  <h2>新規プログラム作成</h2>
+  <form id="newForm">
+    <div class="row"><label>ID (空欄で自動)<input name="id"></label></div>
+    <label>名称<input name="name" required></label>
+    <label>説明<textarea name="description"></textarea></label>
+    <div class="row">
+      <label>予算 (JPYC)<input name="budget_jpy" type="number" required></label>
+      <label>助成率 bps (3000=30%)<input name="subsidy_bps" type="number" value="3000" required></label>
+      <label>住民 1 人上限 (JPYC)<input name="per_citizen_cap_jpy" type="number" required></label>
+    </div>
+    <div class="row">
+      <label>開始<input name="start_at" type="datetime-local" required></label>
+      <label>終了<input name="end_at" type="datetime-local" required></label>
+    </div>
+    <label>対象 JAN (カンマ区切り)<input name="eligible_jans"></label>
+    <label>認定加盟店 ID (カンマ区切り)<input name="approved_stores"></label>
+    <label>居住区 (カンマ区切り)<input name="wards"></label>
+    <div class="row">
+      <label>最低年齢<input name="min_age" type="number"></label>
+      <label>上限年齢<input name="max_age" type="number"></label>
+    </div>
+    <button type="submit">プログラム作成</button>
+    <div id="newError" class="error"></div>
+  </form>
+</section>
+
+<section>
+  <h2>住民への PBM 発行 (デモ)</h2>
+  <form id="issueForm" class="row">
+    <input name="program_id" placeholder="program_id" required>
+    <input name="citizen_pid" placeholder="citizen pid" required>
+    <button type="submit">発行</button>
+    <div id="issueResult"></div>
+  </form>
+</section>
+</main>
+<script src="/ui/api.js"></script>
+<script>
+async function refreshTreasury() {
+  const r = await api('/wallet/treasury');
+  document.querySelector('#treasuryBalance .value').textContent = fmtJpy(r.jpyc_balance);
+}
+async function refreshPrograms() {
+  const list = await api('/programs');
+  const root = document.getElementById('programList');
+  root.innerHTML = '';
+  if (!list.length) { root.textContent = '(まだありません)'; return; }
+  const tbl = el('table', {},
+    el('thead', {}, el('tr', {},
+      el('th', {}, 'ID'), el('th', {}, '名称'), el('th', {}, '予算'), el('th', {}, '消化'),
+      el('th', {}, '助成率'), el('th', {}, '期間'), el('th', {}, '操作')
+    )),
+    el('tbody', {})
+  );
+  for (const p of list) {
+    const tr = el('tr', {},
+      el('td', {}, p.id),
+      el('td', {}, p.name),
+      el('td', {}, fmtJpy(p.budget_jpy)),
+      el('td', {}, fmtJpy(p.spent_jpy)),
+      el('td', {}, (p.subsidy_bps/100).toFixed(1) + '%'),
+      el('td', {}, `${p.start_at.slice(0,10)} – ${p.end_at.slice(0,10)}`),
+      el('td', {},
+        el('button', { class: 'danger', onclick: async () => {
+          if (!confirm('このプログラムを取消しますか?')) return;
+          await api(`/programs/${p.id}`, { method: 'DELETE' });
+          refreshPrograms(); refreshTreasury();
+        }}, p.revoked ? '取消済' : '取消')
+      )
+    );
+    tbl.querySelector('tbody').appendChild(tr);
+  }
+  root.appendChild(tbl);
+}
+
+document.getElementById('topupForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const fd = new FormData(ev.target);
+  await api('/wallet/treasury/topup', { method: 'POST', body: JSON.stringify({ amount_jpy: Number(fd.get('amount')) }) });
+  refreshTreasury();
+  ev.target.reset();
+});
+
+document.getElementById('newForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const fd = new FormData(ev.target);
+  const eligibility = {};
+  const wards = (fd.get('wards') || '').toString().split(',').map(s => s.trim()).filter(Boolean);
+  if (wards.length) eligibility.wards = wards;
+  if (fd.get('min_age')) eligibility.min_age = Number(fd.get('min_age'));
+  if (fd.get('max_age')) eligibility.max_age = Number(fd.get('max_age'));
+  const body = {
+    id: fd.get('id') || null,
+    name: fd.get('name'),
+    description: fd.get('description') || '',
+    budget_jpy: Number(fd.get('budget_jpy')),
+    subsidy_bps: Number(fd.get('subsidy_bps')),
+    per_citizen_cap_jpy: Number(fd.get('per_citizen_cap_jpy')),
+    start_at: fd.get('start_at'),
+    end_at: fd.get('end_at'),
+    eligibility,
+    eligible_jans: (fd.get('eligible_jans') || '').toString().split(',').map(s => s.trim()).filter(Boolean),
+    approved_stores: (fd.get('approved_stores') || '').toString().split(',').map(s => s.trim()).filter(Boolean),
+  };
+  try {
+    await api('/programs', { method: 'POST', body: JSON.stringify(body) });
+    document.getElementById('newError').textContent = '';
+    ev.target.reset();
+    refreshPrograms(); refreshTreasury();
+  } catch (e) {
+    document.getElementById('newError').textContent = e.message;
+  }
+});
+
+document.getElementById('issueForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const fd = new FormData(ev.target);
+  const r = await api(`/programs/${fd.get('program_id')}/issue`, {
+    method: 'POST',
+    body: JSON.stringify({ citizen_pid: fd.get('citizen_pid') })
+  });
+  document.getElementById('issueResult').textContent = '発行 OK: ' + r.pbm_id + ' / 残 ' + fmtJpy(r.remaining_jpy);
+});
+
+refreshTreasury(); refreshPrograms();
+</script>
+</body>
+</html>
