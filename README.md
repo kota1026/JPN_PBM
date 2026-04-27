@@ -21,10 +21,13 @@ JPYC をラップしたプログラマブルマネーで、JAN コードによ�
 ```
 JPN_PBM/
 ├── README.md
+├── .devcontainer/            # GitHub Codespaces / VS Code Dev Container 用
 ├── docs/
 │   ├── architecture.md       # 全体設計
 │   ├── ebpm.md               # EBPM 設計と KPI
-│   └── flow.md               # ユーザーフロー / シーケンス
+│   ├── flow.md               # ユーザーフロー / シーケンス
+│   ├── demo.md               # E2E API 実行ログ (再現可能)
+│   └── video-script.md       # 提出動画用の手順書 / 台本
 ├── contracts/
 │   └── PBM.sol               # 参考用 Solidity (オンチェーン実装の指針)
 ├── backend/                  # FastAPI 実装 (MVP の中核)
@@ -48,6 +51,18 @@ JPN_PBM/
 
 ## 起動方法
 
+### A. GitHub Codespaces / Dev Container (推奨・ローカル不要)
+
+このリポジトリには `.devcontainer/` が同梱されており、
+
+- GitHub の Code → Codespaces → "Create codespace on …"
+- もしくは VS Code で「Reopen in Container」
+
+を選ぶだけで、依存インストールとサーバ起動 (port 8000) まで自動で実行される。
+立ち上がったら "Ports" タブから `localhost:8000` を開く。
+
+### B. ローカル
+
 ```bash
 cd backend
 python -m venv .venv && source .venv/bin/activate
@@ -63,6 +78,10 @@ uvicorn app.main:app --reload
 - EBPM ダッシュボード: http://localhost:8000/ui/ebpm.html
 
 API ドキュメントは http://localhost:8000/docs (Swagger UI)。
+
+実際の API レスポンスを順を追って見たい場合は
+[docs/demo.md](docs/demo.md) に **動作する E2E ログ** をまとめている。
+動画提出用の台本は [docs/video-script.md](docs/video-script.md)。
 
 ## 想定する助成金プログラム例
 
