@@ -2,55 +2,68 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>EBPM ダッシュボード — JPN PBM</title>
 <link rel="stylesheet" href="/ui/styles.css">
 </head>
 <body>
-<div id="nav"></div>
-<header><h1>EBPM ダッシュボード</h1><p>助成金プログラムの政策効果を匿名集計で可視化</p></header>
+<div id="chrome"></div>
 <main>
+
 <section>
+  <h2>プログラム選択</h2>
   <div class="row">
-    <label>プログラム<select id="programSel"></select></label>
-    <button id="reloadBtn" class="secondary">再読み込み</button>
+    <label>対象プログラム
+      <select id="programSel"></select>
+    </label>
+    <label>集計軸
+      <select id="dimSel">
+        <option value="age_band">年齢階級</option>
+        <option value="gender">性別</option>
+        <option value="ward">居住区</option>
+        <option value="category">商品カテゴリ</option>
+        <option value="store_ward">店舗区</option>
+        <option value="date">日付</option>
+      </select>
+    </label>
+    <button id="reloadBtn" class="ghost">再読み込み</button>
   </div>
 </section>
 
 <section>
   <h2>サマリ</h2>
   <div id="summary" class="kpi-grid"></div>
+  <p class="note" style="margin-top:10px">
+    レバレッジ = 自己負担額 / 助成額。1.0 を超えるほど 1 円の助成で多くの自己消費を引き出していることを意味します。
+  </p>
 </section>
 
 <section>
   <h2>軸別ブレイクダウン</h2>
-  <div class="row">
-    <label>軸<select id="dimSel">
-      <option value="age_band">年齢階級</option>
-      <option value="gender">性別</option>
-      <option value="ward">居住区</option>
-      <option value="category">商品カテゴリ</option>
-      <option value="store_ward">店舗区</option>
-      <option value="date">日付</option>
-    </select></label>
-  </div>
-  <div id="breakdown"></div>
-  <small>※ ユニーク人数 5 未満のセルは k-匿名性のため "-" に丸めています。</small>
+  <div id="breakdown" class="empty">読み込み中…</div>
+  <p class="note" style="margin-top:10px">
+    プライバシー保護: ユニーク住民数が <b>5 未満</b>のセルは「<b>-</b>」に丸めて公開しています (k=5 匿名性)。
+    本番運用で利用者が増えれば自動的に数値表示されます。
+  </p>
 </section>
+
 </main>
+
 <script src="/ui/api.js"></script>
 <script>
 async function loadPrograms() {
   const list = await api('/programs');
   const sel = document.getElementById('programSel');
   sel.innerHTML = '<option value="">(全プログラム)</option>';
-  for (const p of list) sel.appendChild(el('option', { value: p.id }, `${p.id}: ${p.name}`));
+  for (const p of list) sel.appendChild(el('option', { value: p.id }, `${p.id} — ${p.name}`));
   sel.addEventListener('change', refresh);
 }
+
 async function refresh() {
   const programId = document.getElementById('programSel').value;
   const dim = document.getElementById('dimSel').value;
 
-  // サマリ
+  // === サマリ ===
   const s = await api('/ebpm/summary' + (programId ? '?program_id=' + encodeURIComponent(programId) : ''));
   const sum = s.length === 1 ? s[0] : s.reduce((a, b) => ({
     tx_count: (a.tx_count||0)+b.tx_count,
@@ -58,49 +71,75 @@ async function refresh() {
     total_jpy: (a.total_jpy||0)+b.total_jpy,
     subsidy_jpy: (a.subsidy_jpy||0)+b.subsidy_jpy,
     citizen_pay_jpy: (a.citizen_pay_jpy||0)+b.citizen_pay_jpy,
-  }), {});
+    budget_jpy: (a.budget_jpy||0)+(b.budget_jpy||0),
+  }), { budget_jpy: 0 });
   const root = document.getElementById('summary');
   root.innerHTML = '';
-  const kpi = (label, value) => {
-    root.appendChild(el('div', { class: 'kpi' },
+  const subsidy = sum.subsidy_jpy || 0;
+  const pay = sum.citizen_pay_jpy || 0;
+  const consumption = sum.budget_jpy ? subsidy / sum.budget_jpy : 0;
+  const cards = [
+    ['取引件数', (sum.tx_count || 0).toLocaleString() + ' 件', 'green'],
+    ['受給ユニーク住民数', (sum.unique_citizens || 0).toLocaleString() + ' 名', 'navy'],
+    ['総購入額', fmtJpy(sum.total_jpy || 0), 'green'],
+    ['助成金額', fmtJpy(subsidy), 'red'],
+    ['自己負担合計', fmtJpy(pay), 'yellow'],
+    ['レバレッジ', subsidy ? (pay/subsidy).toFixed(2) + '×' : '-', 'navy'],
+  ];
+  for (const [label, value, tone] of cards) {
+    root.appendChild(el('div', { class: 'kpi ' + tone },
       el('div', { class: 'label' }, label),
       el('div', { class: 'value' }, value)
     ));
-  };
-  kpi('取引件数', (sum.tx_count || 0).toLocaleString());
-  kpi('受給ユニーク住民数', (sum.unique_citizens || 0).toLocaleString());
-  kpi('総購入額', fmtJpy(sum.total_jpy || 0));
-  kpi('助成金額', fmtJpy(sum.subsidy_jpy || 0));
-  kpi('自己負担合計', fmtJpy(sum.citizen_pay_jpy || 0));
-  if (sum.subsidy_jpy) {
-    kpi('レバレッジ (自己負担/助成)', ((sum.citizen_pay_jpy||0)/sum.subsidy_jpy).toFixed(2) + '×');
+  }
+  if (programId && sum.budget_jpy) {
+    root.appendChild(el('div', { class: 'kpi green' },
+      el('div', { class: 'label' }, '予算消化率'),
+      el('div', { class: 'value' }, (consumption*100).toFixed(2) + '%'),
+      el('div', { class: 'sub' }, `予算 ${fmtJpy(sum.budget_jpy)} / 助成 ${fmtJpy(subsidy)}`)
+    ));
   }
 
-  // ブレイクダウン
+  // === ブレイクダウン ===
   const rows = await api('/ebpm/breakdown?dim=' + dim + (programId ? '&program_id=' + encodeURIComponent(programId) : ''));
+  const bd = document.getElementById('breakdown');
+  bd.innerHTML = '';
+  if (!rows.length) {
+    bd.className = 'empty';
+    bd.textContent = 'データがありません — 先に加盟店レジで購入してください';
+    return;
+  }
+  bd.className = '';
+  let max = 0;
+  for (const r of rows) if (typeof r.subsidy_jpy === 'number') max = Math.max(max, r.subsidy_jpy);
+
   const tbl = el('table', {},
     el('thead', {}, el('tr', {},
-      el('th', {}, dim), el('th', {}, '取引件数'), el('th', {}, '人数'),
-      el('th', {}, '総額'), el('th', {}, '助成額'), el('th', {}, '助成額バー')
+      el('th', {}, dim),
+      el('th', { class: 'num' }, '取引件数'),
+      el('th', { class: 'num' }, '人数'),
+      el('th', { class: 'num' }, '総額'),
+      el('th', { class: 'num' }, '助成額'),
+      el('th', { style: 'width:30%' }, '助成額の分布')
     )),
     el('tbody', {})
   );
-  let max = 0;
-  for (const r of rows) if (typeof r.subsidy_jpy === 'number') max = Math.max(max, r.subsidy_jpy);
   for (const r of rows) {
-    const w = (typeof r.subsidy_jpy === 'number' && max) ? (r.subsidy_jpy / max * 200) : 0;
+    const w = (typeof r.subsidy_jpy === 'number' && max) ? (r.subsidy_jpy / max * 100) : 0;
     tbl.querySelector('tbody').appendChild(el('tr', {},
       el('td', {}, r.key),
-      el('td', {}, String(r.tx_count)),
-      el('td', {}, String(r.unique_citizens)),
-      el('td', {}, fmtJpy(r.total_jpy)),
-      el('td', {}, fmtJpy(r.subsidy_jpy)),
-      el('td', {}, w ? el('div', { class: 'bar', style: `width:${w}px` }) : document.createTextNode('-'))
+      el('td', { class: 'num' }, String(r.tx_count)),
+      el('td', { class: 'num' }, String(r.unique_citizens)),
+      el('td', { class: 'num' }, fmtJpy(r.total_jpy)),
+      el('td', { class: 'num' }, fmtJpy(r.subsidy_jpy)),
+      el('td', {}, w
+        ? el('div', { class: 'bar-track' }, el('div', { class: 'bar', style: `width:${w.toFixed(1)}%` }))
+        : el('span', { class: 'note' }, '— (k 未満で丸め)'))
     ));
   }
-  const bd = document.getElementById('breakdown');
-  bd.innerHTML = ''; bd.appendChild(tbl);
+  bd.appendChild(tbl);
 }
+
 document.getElementById('dimSel').addEventListener('change', refresh);
 document.getElementById('reloadBtn').addEventListener('click', refresh);
 loadPrograms().then(refresh);
