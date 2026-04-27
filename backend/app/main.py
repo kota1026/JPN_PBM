@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.types import Scope
 
 from app.db import init_db
 from app.routers import auth, ebpm, products, programs, purchase, seed, wallet
@@ -43,9 +44,19 @@ app.include_router(ebpm.router)
 app.include_router(seed.router)
 
 # 静的フロントエンド
+# - 開発中はブラウザに HTML/JS/CSS をキャッシュさせない (新 UI が見えない問題を防止)
+class NoCacheStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope: Scope):
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
+
+
 FRONTEND_DIR = pathlib.Path(__file__).resolve().parents[2] / "frontend"
 if FRONTEND_DIR.exists():
-    app.mount("/ui", StaticFiles(directory=FRONTEND_DIR, html=True), name="ui")
+    app.mount("/ui", NoCacheStaticFiles(directory=FRONTEND_DIR, html=True), name="ui")
 
 
 @app.get("/", include_in_schema=False)
