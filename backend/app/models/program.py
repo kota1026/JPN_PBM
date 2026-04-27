@@ -35,8 +35,14 @@ class Program(Base):
     #      "genders": null, "child_age_max": null}
     eligibility: Mapped[dict] = mapped_column(JSON, default=dict)
 
-    # 対象 JAN リスト
+    # 対象 JAN リスト (明示的な追加)
     eligible_jans: Mapped[list[str]] = mapped_column(JSON, default=list)
+
+    # 対象カテゴリ (このカテゴリの全 JAN を一括で対象にする)
+    eligible_categories: Mapped[list[str]] = mapped_column(JSON, default=list)
+
+    # 非対象 JAN (カテゴリ一括対象から除外したい例外)
+    excluded_jans: Mapped[list[str]] = mapped_column(JSON, default=list)
 
     # 認定加盟店リスト
     approved_stores: Mapped[list[str]] = mapped_column(JSON, default=list)

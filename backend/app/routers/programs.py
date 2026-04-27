@@ -43,6 +43,8 @@ class ProgramIn(BaseModel):
     end_at: datetime
     eligibility: dict[str, Any] = {}
     eligible_jans: list[str] = []
+    eligible_categories: list[str] = []
+    excluded_jans: list[str] = []
     approved_stores: list[str] = []
 
 
@@ -84,6 +86,8 @@ def create_program(payload: ProgramIn, db: Session = Depends(_db)) -> ProgramOut
         end_at=payload.end_at,
         eligibility=payload.eligibility,
         eligible_jans=payload.eligible_jans,
+        eligible_categories=payload.eligible_categories,
+        excluded_jans=payload.excluded_jans,
         approved_stores=payload.approved_stores,
     )
     db.add(p)
@@ -175,6 +179,8 @@ def _to_out(p: Program) -> ProgramOut:
         end_at=p.end_at,
         eligibility=p.eligibility or {},
         eligible_jans=p.eligible_jans or [],
+        eligible_categories=p.eligible_categories or [],
+        excluded_jans=p.excluded_jans or [],
         approved_stores=p.approved_stores or [],
         revoked=p.revoked,
     )

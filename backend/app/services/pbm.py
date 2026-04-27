@@ -73,6 +73,22 @@ def issue(db: Session, program: Program, citizen: Citizen) -> PBMToken:
     return token
 
 
+def _product_eligible(product: Product, program: Program) -> bool:
+    """商品 × プログラムの対象判定。
+
+    対象 = (カテゴリが eligible_categories に含まれる OR
+           JAN が eligible_jans に含まれる)
+          AND JAN が excluded_jans に含まれない
+    """
+    if product.jan in (program.excluded_jans or []):
+        return False
+    if product.category in (program.eligible_categories or []):
+        return True
+    if product.jan in (program.eligible_jans or []):
+        return True
+    return False
+
+
 def _calc_subsidy(price_total: int, program: Program, token: PBMToken) -> int:
     raw = price_total * program.subsidy_bps // 10_000
     capped_by_token = min(raw, token.remaining_jpy)
@@ -112,7 +128,7 @@ def spend(
     for p in candidate_programs:
         if not (p.start_at <= now <= p.end_at):
             continue
-        if product.jan not in (p.eligible_jans or []):
+        if not _product_eligible(product, p):
             continue
         if store.id not in (p.approved_stores or []):
             continue

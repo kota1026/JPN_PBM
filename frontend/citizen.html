@@ -52,7 +52,16 @@
 </section>
 
 <section>
-  <h2>② 受給可能な助成金プログラム</h2>
+  <h2>② 加盟店で見せる QR コード</h2>
+  <p class="note" style="margin-top:-6px">
+    加盟店レジでこの QR をスキャンすると、対象商品をスキャンしただけで自動的に PBM が適用され決済されます。
+    住民は JAN コードを意識する必要がありません。
+  </p>
+  <div id="qrWrap" class="empty">先に上で認証してください</div>
+</section>
+
+<section>
+  <h2>③ 受給可能な助成金プログラム</h2>
   <p class="note" style="margin-top:-6px">
     入力した 4 情報をもとに、東京都が定義する eligibility 条件 (居住区 / 年齢 / 性別) を自動判定し、対象のプログラムだけ表示します。
   </p>
@@ -60,7 +69,7 @@
 </section>
 
 <section>
-  <h2>③ ウォレット残高</h2>
+  <h2>④ ウォレット残高</h2>
   <div id="walletKpi" class="kpi-grid">
     <div class="kpi"><div class="label">通常 JPYC 残高</div><div class="value">-</div></div>
     <div class="kpi navy"><div class="label">保有 PBM トークン</div><div class="value">-</div></div>
@@ -72,6 +81,10 @@
 
 </main>
 
+<script type="module">
+import { drawQR } from '/ui/scanner.js';
+window.__drawQR = drawQR;
+</script>
 <script src="/ui/api.js"></script>
 <script>
 let pid = null;
@@ -95,6 +108,7 @@ document.getElementById('loginForm').addEventListener('submit', async (ev) => {
       el('div', {}, '擬似 ID (HMAC, 不可逆): ', el('code', {}, pid)),
       el('div', { class: 'note' }, '失効: ' + r.expires_at)
     ));
+    await renderQR();
     await refreshAll();
   } catch (e) {
     document.getElementById('me').innerHTML = '';
@@ -102,9 +116,25 @@ document.getElementById('loginForm').addEventListener('submit', async (ev) => {
   }
 });
 
+async function renderQR() {
+  const root = document.getElementById('qrWrap');
+  root.innerHTML = '';
+  root.className = '';
+  const card = el('div', { class: 'qr-card' });
+  const qrTarget = el('div');
+  card.appendChild(qrTarget);
+  card.appendChild(el('div', { class: 'qr-label' }, '加盟店 POS にこの QR をかざす'));
+  card.appendChild(el('div', { class: 'note', style:'word-break:break-all; max-width:240px; text-align:center' }, pid));
+  root.appendChild(card);
+  try {
+    await window.__drawQR(qrTarget, pid, { width: 220, errorLevel: 'M' });
+  } catch (e) {
+    qrTarget.appendChild(el('div', { class: 'error' }, 'QR 生成失敗: ' + e.message));
+  }
+}
+
 async function refreshAll() {
   if (!pid) return;
-  // 受給可能プログラム
   const eligible = await api('/programs/eligible/' + pid);
   const root = document.getElementById('eligible');
   root.innerHTML = '';
@@ -141,7 +171,6 @@ async function refreshAll() {
     }
   }
 
-  // ウォレット
   const w = await api('/wallet/citizen/' + pid);
   const remainingTotal = w.pbm_tokens.reduce((a,t) => a + t.remaining_jpy, 0);
   document.getElementById('walletKpi').innerHTML = '';
