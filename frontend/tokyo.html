@@ -69,24 +69,28 @@
       </label>
     </div>
 
-    <h3>対象商品 <span class="badge">カテゴリで一括 + 個別調整</span></h3>
+    <h3>対象商品 <span class="badge">カテゴリで一括 + 個別調整</span> <span class="badge navy" title="JANコードはメーカー公式ページ等で公開されている実在の商品コードを使用">実在 JAN 商品マスタ</span></h3>
     <p class="note" style="margin-top:-4px">
-      左でカテゴリを選んで対象に入れると、そのカテゴリ全 JAN がまとめて対象になります。
-      個別商品を中央リストから「対象 →」「除外 →」へ動かして例外指定できます。
+      左ペインで <b>大分類 (家電・食品・防災 …)</b> または小分類を選ぶと、そのカテゴリ全 JAN がまとめて対象になります。
+      個別の JAN は中央ペインから「対象追加」「個別除外」で例外指定できます。
+      検索は <b>商品名 / JAN / カテゴリ名</b> 横断で動きます。
+      <br>
+      <span style="color:var(--ink-mute)">※ 商品名・JAN は各メーカー公式ページから引用した実データ。価格は表示用の参考値で、本デモが各社製品を実際に助成対象に指定するものではありません。</span>
     </p>
     <div class="picker">
       <div class="picker-head">
-        <input id="prodSearch" placeholder="商品名 / JAN で検索" class="grow">
+        <input id="prodSearch" placeholder="例: エアコン / 4901… / 防災 / おむつ" class="grow">
+        <span class="note" id="searchHint">全件表示中</span>
         <button type="button" class="ghost" id="bulkAllBtn">全カテゴリを対象に</button>
         <button type="button" class="ghost" id="clearAllBtn">対象/除外をクリア</button>
       </div>
       <div class="picker-body">
         <div class="picker-pane">
-          <h4>カテゴリ</h4>
+          <h4>カテゴリツリー</h4>
           <div id="catPane"></div>
         </div>
         <div class="picker-pane">
-          <h4>商品 <span class="badge gray" id="prodCount">0</span></h4>
+          <h4>商品 <span class="badge gray" id="prodCount">0</span> <span class="note" id="prodFilterLabel"></span></h4>
           <div id="prodPane"></div>
         </div>
         <div class="picker-pane">
@@ -150,13 +154,15 @@ const WARDS_TOKYO = [
 ];
 
 const state = {
-  cats: new Set(),       // selected category names
+  cats: new Set(),       // selected category names (small)
   jansAdd: new Set(),    // explicitly added JANs (in addition to categories)
   jansExc: new Set(),    // excluded JANs (override category)
   stores: new Set(),
   wards: new Set(),
-  filterCat: null,
+  filterCat: null,       // small category id, e.g. "appliance.air_conditioner"
+  filterParent: null,    // parent id, e.g. "appliance"
   filterText: '',
+  collapsedParents: new Set(),  // 親が折りたたまれているか
 };
 
 async function refreshTreasury() {
@@ -171,50 +177,194 @@ async function loadCatalog() {
   renderCats(); renderProds(); renderSelected(); renderStores(); renderWards();
 }
 
+// CATEGORIES を大分類 (parent) → 小分類 (children) のツリーへ。
+function buildCatTree() {
+  const tree = new Map();
+  for (const c of CATEGORIES) {
+    const parent = c.parent || (c.category || '').split('.')[0];
+    if (!tree.has(parent)) tree.set(parent, { parent, items: [], count: 0,
+      label: c.parent_label || (typeof CATEGORY_PARENTS !== 'undefined' && CATEGORY_PARENTS[parent]?.label) || parent,
+      icon:  c.parent_icon  || (typeof CATEGORY_PARENTS !== 'undefined' && CATEGORY_PARENTS[parent]?.icon)  || '📦',
+    });
+    const g = tree.get(parent);
+    g.items.push(c);
+    g.count += c.count;
+  }
+  return [...tree.values()];
+}
+
+function parentSelectionState(group) {
+  // 全選択 / 一部選択 / 未選択
+  const total = group.items.length;
+  let sel = 0;
+  for (const c of group.items) if (state.cats.has(c.category)) sel++;
+  if (sel === 0) return 'none';
+  if (sel === total) return 'all';
+  return 'partial';
+}
+
 function renderCats() {
   const root = document.getElementById('catPane');
   root.innerHTML = '';
-  root.appendChild(el('div', { class: 'cat-row' + (state.filterCat == null ? ' active' : ''),
-                              onclick: () => { state.filterCat = null; renderCats(); renderProds(); }},
-    el('span', {}, 'すべて'),
+
+  // 「すべて」行
+  root.appendChild(el('div', {
+    class: 'cat-row' + (state.filterCat == null && state.filterParent == null ? ' active' : ''),
+    onclick: () => { state.filterCat = null; state.filterParent = null; renderCats(); renderProds(); },
+  },
+    el('span', {}, '🗂 ', el('b', {}, 'すべて表示')),
     el('span', { class: 'badge gray' }, PRODUCTS.length)
   ));
-  for (const c of CATEGORIES) {
-    const inSel = state.cats.has(c.category);
-    root.appendChild(el('div', { class: 'cat-row' + (state.filterCat === c.category ? ' active' : ''),
-                                 onclick: () => { state.filterCat = c.category; renderCats(); renderProds(); }},
+
+  if (!CATEGORIES.length) {
+    root.appendChild(el('div', { class: 'note', style: 'padding:8px' }, 'カテゴリ未登録 — 商品マスタを投入してください'));
+    return;
+  }
+
+  const tree = buildCatTree();
+  for (const g of tree) {
+    const collapsed = state.collapsedParents.has(g.parent);
+    const selState = parentSelectionState(g);
+    const parentActive = state.filterParent === g.parent && state.filterCat == null;
+
+    // 大分類ヘッダ
+    const headerRow = el('div', {
+      class: 'cat-row cat-parent' + (parentActive ? ' active' : ''),
+      onclick: () => {
+        state.filterParent = g.parent;
+        state.filterCat = null;
+        renderCats(); renderProds();
+      },
+    },
       el('span', {},
-        inSel ? el('span', { style: 'color:var(--tokyo-green)' }, '✓ ') : null,
-        c.category
+        el('span', {
+          class: 'cat-toggle',
+          onclick: (e) => {
+            e.stopPropagation();
+            if (collapsed) state.collapsedParents.delete(g.parent);
+            else state.collapsedParents.add(g.parent);
+            renderCats();
+          },
+        }, collapsed ? '▶' : '▼'),
+        ' ', g.icon, ' ', el('b', {}, g.label),
+        selState === 'all'     ? el('span', { class: 'badge', style: 'margin-left:6px' }, '全選択中') :
+        selState === 'partial' ? el('span', { class: 'badge yellow', style: 'margin-left:6px' }, '一部選択') : null,
       ),
       el('div', { class: 'pick-actions' },
-        inSel
-          ? el('button', { class: 'ghost', onclick: (e) => { e.stopPropagation(); state.cats.delete(c.category); renderAll(); }}, '対象解除')
-          : el('button', { onclick: (e) => { e.stopPropagation(); state.cats.add(c.category); renderAll(); }}, 'カテゴリ対象')
+        el('span', { class: 'badge gray' }, g.count),
+        selState === 'all'
+          ? el('button', { class: 'ghost', onclick: (e) => { e.stopPropagation(); g.items.forEach(c => state.cats.delete(c.category)); renderAll(); }}, '対象解除')
+          : el('button', { onclick: (e) => { e.stopPropagation(); g.items.forEach(c => state.cats.add(c.category)); renderAll(); }}, '一括対象')
       )
-    ));
+    );
+    root.appendChild(headerRow);
+
+    if (collapsed) continue;
+
+    // 小分類
+    for (const c of g.items) {
+      const inSel = state.cats.has(c.category);
+      const active = state.filterCat === c.category;
+      root.appendChild(el('div', {
+        class: 'cat-row cat-child' + (active ? ' active' : ''),
+        onclick: () => { state.filterCat = c.category; state.filterParent = g.parent; renderCats(); renderProds(); },
+      },
+        el('span', {},
+          inSel ? el('span', { style: 'color:var(--tokyo-green)' }, '✓ ') : null,
+          c.label || catLabel(c.category)
+        ),
+        el('div', { class: 'pick-actions' },
+          el('span', { class: 'badge gray' }, c.count),
+          inSel
+            ? el('button', { class: 'ghost', onclick: (e) => { e.stopPropagation(); state.cats.delete(c.category); renderAll(); }}, '対象解除')
+            : el('button', { onclick: (e) => { e.stopPropagation(); state.cats.add(c.category); renderAll(); }}, 'カテゴリ対象')
+        )
+      ));
+    }
   }
 }
 
 function renderProds() {
   const root = document.getElementById('prodPane');
   root.innerHTML = '';
-  const filtered = PRODUCTS.filter(p =>
-    (!state.filterCat || p.category === state.filterCat) &&
-    (!state.filterText || (p.name + p.jan).toLowerCase().includes(state.filterText.toLowerCase()))
-  );
+
+  // 商品マスタが空 → 大きな空状態 CTA
+  if (!PRODUCTS.length) {
+    document.getElementById('prodCount').textContent = 0;
+    document.getElementById('prodFilterLabel').textContent = '';
+    root.appendChild(el('div', { class: 'empty-cta' },
+      el('div', { class: 'empty-cta-icon' }, '📦'),
+      el('h3', {}, '商品マスタが空です'),
+      el('p', {}, 'PBM 助成金は JAN コード単位で対象を指定します。デモ用の商品マスタ (家電・食品・育児・医薬品・防災・介護・学用品 40 点超) を一括投入できます。'),
+      el('button', { class: 'btn', onclick: async (ev) => {
+        const btn = ev.currentTarget;
+        btn.disabled = true; btn.textContent = '投入中…';
+        try {
+          await api('/seed/load', { method: 'POST' });
+          await loadCatalog();
+          await refreshPrograms();
+          await refreshTreasury();
+        } catch (e) {
+          alert('シード投入に失敗しました: ' + e.message);
+          btn.disabled = false; btn.textContent = 'デモデータを今すぐロード';
+        }
+      }}, 'デモデータを今すぐロード'),
+      el('div', { class: 'note' }, 'POST /seed/load を呼び、商品 + 加盟店 + 住民 + 助成金プログラムをまとめて投入します')
+    ));
+    return;
+  }
+
+  const filtered = PRODUCTS.filter(p => {
+    if (state.filterCat && p.category !== state.filterCat) return false;
+    if (state.filterParent && !state.filterCat && catParent(p.category) !== state.filterParent) return false;
+    if (!productMatches(p, state.filterText)) return false;
+    return true;
+  });
+
   document.getElementById('prodCount').textContent = filtered.length;
+  const filterParts = [];
+  if (state.filterParent && !state.filterCat) filterParts.push(catParentMeta(state.filterParent + '.x').label);
+  if (state.filterCat) filterParts.push(catFullLabel(state.filterCat));
+  if (state.filterText) filterParts.push(`"${state.filterText}"`);
+  document.getElementById('prodFilterLabel').textContent = filterParts.length ? '— ' + filterParts.join(' × ') : '';
+
+  // 検索ヒント (件数)
+  const hint = document.getElementById('searchHint');
+  if (state.filterText) {
+    hint.innerHTML = filtered.length
+      ? `<b style="color:var(--tokyo-green-dark)">${filtered.length} 件</b> 一致`
+      : `<b style="color:var(--tokyo-red)">0 件</b> 一致`;
+  } else {
+    hint.textContent = `全 ${PRODUCTS.length} 件`;
+  }
+
+  if (!filtered.length) {
+    root.appendChild(el('div', { class: 'empty', style: 'padding:18px 8px' },
+      '一致する商品がありません。',
+      el('div', { class: 'note', style: 'margin-top:4px' }, '検索文字列やカテゴリ絞り込みを見直してください。')
+    ));
+    return;
+  }
+
   for (const p of filtered) {
     const inEligibleByCat = state.cats.has(p.category);
     const inAdd = state.jansAdd.has(p.jan);
     const inExc = state.jansExc.has(p.jan);
     const klass = inExc ? 'in-excluded' : (inEligibleByCat || inAdd ? 'in-eligible' : '');
-    root.appendChild(el('div', { class: 'pick-row ' + klass },
+    const meta = catParentMeta(p.category);
+    root.appendChild(el('div', { class: 'pick-row prod-card ' + klass },
+      el('div', { class: 'prod-icon', style: `background:${meta.color}1a; color:${meta.color}` }, meta.icon),
       el('div', { class: 'name' },
-        p.name,
-        el('div', { class: 'jan' }, p.jan + ' / ' + fmtJpy(p.price_jpy))
+        el('div', { class: 'prod-name' }, p.name),
+        el('div', { class: 'prod-meta' },
+          el('span', { class: 'cat', style: `background:${meta.color}1a; color:${meta.color}` }, catFullLabel(p.category)),
+          el('span', { class: 'jan' }, 'JAN ', p.jan),
+          el('span', { class: 'price' }, fmtJpy(p.price_jpy))
+        ),
+        inEligibleByCat ? el('div', { class: 'prod-status ok' }, '✓ カテゴリで対象に含まれています') :
+        inAdd           ? el('div', { class: 'prod-status ok' }, '✓ 個別 JAN で対象追加済み') :
+        inExc           ? el('div', { class: 'prod-status ng' }, '✕ カテゴリ対象から除外中') : null,
       ),
-      el('span', { class: 'cat' }, p.category),
       el('div', { class: 'pick-actions' },
         inExc
           ? el('button', { class: 'ghost', onclick: () => { state.jansExc.delete(p.jan); renderAll(); }}, '除外解除')
@@ -243,8 +393,12 @@ function renderSelected() {
   if (state.cats.size) {
     root.appendChild(el('h4', {}, '対象カテゴリ'));
     for (const c of state.cats) {
+      const meta = catParentMeta(c);
       root.appendChild(el('div', { class: 'pick-row in-eligible' },
-        el('div', { class: 'name' }, c),
+        el('div', { class: 'name' },
+          el('span', { style: 'margin-right:4px' }, meta.icon),
+          catFullLabel(c)
+        ),
         el('button', { class: 'ghost', onclick: () => { state.cats.delete(c); renderAll(); }}, '×')
       ));
     }
@@ -253,7 +407,10 @@ function renderSelected() {
     root.appendChild(el('h4', {}, `対象商品 (${eligibles.length} JAN)`));
     for (const p of eligibles.slice(0, 10)) {
       root.appendChild(el('div', { class: 'pick-row' },
-        el('div', { class: 'name' }, p.name, el('div', { class: 'jan' }, p.jan))
+        el('div', { class: 'name' },
+          p.name,
+          el('div', { class: 'jan' }, catFullLabel(p.category) + ' / ' + p.jan)
+        )
       ));
     }
     if (eligibles.length > 10) root.appendChild(el('div', { class: 'note' }, `… 他 ${eligibles.length - 10} 件`));
@@ -262,7 +419,7 @@ function renderSelected() {
     root.appendChild(el('h4', {}, '除外商品 (例外)'));
     for (const p of excludes) {
       root.appendChild(el('div', { class: 'pick-row in-excluded' },
-        el('div', { class: 'name' }, p.name, el('div', { class: 'jan' }, p.jan)),
+        el('div', { class: 'name' }, p.name, el('div', { class: 'jan' }, catFullLabel(p.category) + ' / ' + p.jan)),
         el('button', { class: 'ghost', onclick: () => { state.jansExc.delete(p.jan); renderAll(); }}, '×')
       ));
     }

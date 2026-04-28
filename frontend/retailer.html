@@ -101,7 +101,7 @@ async function loadProducts() {
     tbl.querySelector('tbody').appendChild(el('tr', {},
       el('td', {}, el('code', {}, p.jan)),
       el('td', {}, p.name),
-      el('td', {}, el('span', { class: 'badge gray' }, p.category)),
+      el('td', {}, el('span', { class: 'badge gray', title: p.category }, catFullLabel(p.category))),
       el('td', { class: 'num' }, fmtJpy(p.price_jpy)),
       el('td', {}, el('button', {
         class: 'ghost', style: 'padding:4px 10px; font-size:11px',
@@ -119,7 +119,7 @@ function showProductInfo(p) {
   root.innerHTML = '';
   root.appendChild(el('div', { class: 'receipt' },
     el('h3', {}, p.name),
-    el('div', {}, p.category + ' / 単価 ' + fmtJpy(p.price_jpy))
+    el('div', {}, catFullLabel(p.category) + ' / 単価 ' + fmtJpy(p.price_jpy))
   ));
 }
 

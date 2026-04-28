@@ -49,15 +49,64 @@ def upsert_product(payload: ProductIn, db: Session = Depends(_db)) -> ProductIn:
 
 # 注意: 静的パス (/products/categories) は動的パス (/products/{jan}) よりも先に
 # 登録しないと、{jan} に "categories" が吸われてしまう。
+
+# UI と共有する大分類ラベル。サーバ側でも保持して JSON で返す。
+CATEGORY_PARENTS = {
+    "appliance": {"label": "家電",     "icon": "🔌"},
+    "food":      {"label": "食品",     "icon": "🍙"},
+    "goods":     {"label": "日用品",   "icon": "🧴"},
+    "med":       {"label": "医薬品",   "icon": "💊"},
+    "disaster":  {"label": "防災",     "icon": "🛟"},
+    "care":      {"label": "介護",     "icon": "🧓"},
+    "school":    {"label": "学用品",   "icon": "🎒"},
+}
+CATEGORY_LABELS = {
+    "appliance.air_conditioner": "エアコン",
+    "appliance.refrigerator":    "冷蔵庫",
+    "appliance.light":           "照明",
+    "appliance.washer":          "洗濯機",
+    "appliance.kitchen":         "キッチン家電",
+    "food.baby":                 "乳幼児食品",
+    "food.daily":                "日常食品",
+    "goods.baby":                "育児用品",
+    "med.rx":                    "処方薬",
+    "med.otc":                   "市販薬",
+    "med.supplement":            "サプリ・栄養食品",
+    "disaster.water":            "保存水",
+    "disaster.food":             "非常食",
+    "disaster.gear":             "防災用品",
+    "care.adult":                "介護消耗品",
+    "care.equipment":            "介護用品",
+    "school.stationery":         "文房具",
+    "school.bag":                "ランドセル",
+}
+
+
+def _parent_of(category: str) -> str:
+    return (category or "").split(".", 1)[0]
+
+
 @router.get("/products/categories")
 def list_categories(db: Session = Depends(_db)):
-    """カテゴリ一覧 + 各カテゴリの商品件数。"""
+    """カテゴリ一覧 + 件数 + 日本語ラベル + 大分類。"""
     rows = db.execute(
         select(Product.category, func.count(Product.jan))
         .group_by(Product.category)
         .order_by(Product.category)
     ).all()
-    return [{"category": c, "count": n} for c, n in rows]
+    out = []
+    for c, n in rows:
+        parent = _parent_of(c)
+        meta = CATEGORY_PARENTS.get(parent, {"label": parent, "icon": "📦"})
+        out.append({
+            "category": c,
+            "count": n,
+            "label": CATEGORY_LABELS.get(c, c.split(".", 1)[-1]),
+            "parent": parent,
+            "parent_label": meta["label"],
+            "parent_icon": meta["icon"],
+        })
+    return out
 
 
 @router.get("/products")
