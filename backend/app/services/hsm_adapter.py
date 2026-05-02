@@ -116,6 +116,76 @@ class MockBackend:
         return sign_coupon_eip191(coupon, sk)
 
 
+# ----------------------------- pkcs11 backend (Phase 3 用 stub) -----------------------------
+
+
+class Pkcs11Backend:
+    """PKCS#11 風 API シグネチャの stub (戦略会議 #8 採択 B)。
+
+    本物の実装では `python-pkcs11` 等で HSM (AWS CloudHSM / Thales Luna / SoftHSM2 等) に
+    接続し、`session.find_objects()` / `key.sign(digest, mechanism=ECDSA)` を呼ぶ。
+    本 stub は実 HSM が無い環境でも `JPN_PBM_HSM_PKCS11_LIBRARY` 等の env を
+    検証 + 既存 MockBackend にフォールバックする。
+
+    【ENV (本番では指定する)】
+        JPN_PBM_HSM_PKCS11_LIBRARY  : PKCS#11 ドライバの so/dll パス
+        JPN_PBM_HSM_PKCS11_TOKEN    : token label (HSM 内のスロット名)
+        JPN_PBM_HSM_PKCS11_PIN      : token PIN (本番は HSM 自身が秘匿)
+        JPN_PBM_HSM_PKCS11_KEY_IDS  : "label1,label2" PKCS#11 オブジェクトラベル
+
+    【sandbox 動作】
+        env が揃っていなければ MockBackend と同じ JPN_PBM_HSM_MOCK_KEYS から鍵を読む
+        (= テストでは Pkcs11Backend と MockBackend が同じ動作)。
+    """
+
+    def __init__(self):
+        self.library = os.environ.get("JPN_PBM_HSM_PKCS11_LIBRARY", "")
+        self.token = os.environ.get("JPN_PBM_HSM_PKCS11_TOKEN", "")
+        self.key_ids = [
+            k.strip() for k in os.environ.get("JPN_PBM_HSM_PKCS11_KEY_IDS", "").split(",")
+            if k.strip()
+        ]
+        # 実 HSM 接続が無いとき MockBackend にフォールバック (sandbox / CI 用)
+        self._fallback = MockBackend()
+
+    @property
+    def is_real_hsm(self) -> bool:
+        """実 HSM ライブラリが指定されているか。"""
+        return bool(self.library) and bool(self.token)
+
+    def list_keys(self) -> list[HsmKeyInfo]:
+        if self.is_real_hsm:  # pragma: no cover
+            # 本番では PKCS#11 セッションから取得
+            raise NotImplementedError(
+                "Real PKCS#11 enumeration requires python-pkcs11 + actual HSM. "
+                "Configure JPN_PBM_HSM_BACKEND=mock for sandbox testing."
+            )
+        return self._fallback.list_keys()
+
+    def get_address(self, key_id: str) -> str:
+        if self.is_real_hsm:  # pragma: no cover
+            raise NotImplementedError("Real PKCS#11 not implemented in stub")
+        return self._fallback.get_address(key_id)
+
+    def sign_coupon(self, key_id: str, coupon: SolCoupon) -> bytes:
+        if self.is_real_hsm:  # pragma: no cover
+            # 本番では keccak256(eth_signed_digest(...)) を HSM に投げる:
+            # session.sign(key_handle, digest, mechanism=Mechanism.ECDSA)
+            # 戻り値の DER → r||s に正規化 → recovery id を試行で確定
+            raise NotImplementedError("Real PKCS#11 signing requires HSM session")
+        return self._fallback.sign_coupon(key_id, coupon)
+
+    def diagnostic(self) -> dict[str, object]:
+        return {
+            "backend": "pkcs11",
+            "library_configured": bool(self.library),
+            "token_configured": bool(self.token),
+            "key_ids_configured": len(self.key_ids),
+            "is_real_hsm": self.is_real_hsm,
+            "fallback_in_use": not self.is_real_hsm,
+        }
+
+
 # ----------------------------- 切替 -----------------------------
 
 
@@ -126,7 +196,9 @@ def get_backend() -> HsmBackend:
         return MockBackend()
     if name == "env":
         return EnvBackend()
-    raise NotImplementedError(f"HSM backend {name!r} not implemented (only 'env'/'mock')")
+    if name == "pkcs11":
+        return Pkcs11Backend()
+    raise NotImplementedError(f"HSM backend {name!r} not implemented")
 
 
 def status() -> dict[str, object]:

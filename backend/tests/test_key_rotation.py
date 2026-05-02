@@ -96,6 +96,63 @@ def test_no_keys_configured(monkeypatch):
     assert not ok
 
 
+# ----------------------------- 鍵 age tracking (Round 9 採択 C) -----------------------------
+
+
+def test_key_age_calculation(monkeypatch):
+    from datetime import date
+
+    monkeypatch.setenv("JPN_PBM_GOVERNOR_PRIVKEYS", f"{KEY_A},{KEY_B}")
+    monkeypatch.setenv("JPN_PBM_GOVERNOR_ISSUED_AT", "2025-01-15,2024-06-01")
+
+    keys = km.load_keys()
+    assert keys[0].issued_at == date(2025, 1, 15)
+    assert keys[1].issued_at == date(2024, 6, 1)
+
+    # 2026-05-02 から見た age
+    today = date(2026, 5, 2)
+    assert keys[0].age_days(today=today) == 472
+    assert keys[1].age_days(today=today) == 700
+
+
+def test_key_overage_detection(monkeypatch):
+    from datetime import date
+
+    monkeypatch.setenv("JPN_PBM_GOVERNOR_PRIVKEYS", f"{KEY_A},{KEY_B}")
+    monkeypatch.setenv("JPN_PBM_GOVERNOR_ISSUED_AT", "2025-01-15,2024-06-01")
+    today = date(2026, 5, 2)
+
+    keys = km.load_keys()
+    assert keys[0].is_overage(max_age_days=365, today=today)  # 472 > 365
+    assert keys[1].is_overage(max_age_days=365, today=today)  # 700 > 365
+    # 800 日許容なら 472 はまだ OK
+    assert not keys[0].is_overage(max_age_days=800, today=today)
+
+
+def test_unknown_issued_at_does_not_raise_overage(monkeypatch):
+    """issued_at が None なら is_overage=False (=警告対象外)。"""
+    monkeypatch.setenv("JPN_PBM_GOVERNOR_PRIVKEYS", KEY_A)
+    monkeypatch.delenv("JPN_PBM_GOVERNOR_ISSUED_AT", raising=False)
+    keys = km.load_keys()
+    assert keys[0].issued_at is None
+    assert keys[0].age_days() is None
+    assert not keys[0].is_overage()
+
+
+def test_rotation_status_emits_overage_alert(monkeypatch):
+    from datetime import date
+
+    monkeypatch.setenv("JPN_PBM_GOVERNOR_PRIVKEYS", f"{KEY_A},{KEY_B}")
+    monkeypatch.setenv("JPN_PBM_GOVERNOR_ISSUED_AT", "2025-01-15,2024-06-01")
+    monkeypatch.setenv("JPN_PBM_KEY_MAX_AGE_DAYS", "365")
+
+    status = km.rotation_status(today=date(2026, 5, 2))
+    assert status["max_age_days"] == 365
+    # 両方 overage
+    assert any("WARNING" in a for a in status["alerts"])
+    assert all(a["is_overage"] for a in status["addresses"])
+
+
 def test_rotation_status_endpoint(monkeypatch):
     from fastapi.testclient import TestClient
     from app.main import app
