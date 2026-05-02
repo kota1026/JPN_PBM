@@ -64,7 +64,10 @@ async def _worker(
         results.append((path, code, dt))
 
 
-async def main_async(base: str, concurrency: int, iters: int, targets: list[str]) -> int:
+async def main_async(
+    base: str, concurrency: int, iters: int, targets: list[str],
+    max_fail_rate: float = 0.0,
+) -> int:
     print(f"loadtest: base={base} concurrency={concurrency} iters={iters} targets={len(targets)}")
     results: list[tuple[str, int, float]] = []
     started = time.perf_counter()
@@ -102,7 +105,10 @@ async def main_async(base: str, concurrency: int, iters: int, targets: list[str]
         fr = by_path_fail.get(path, 0)
         print(f"    {path}: n={len(ds)} p95={p95_:.1f}ms fail={fr}")
 
-    return 1 if failures else 0
+    fail_rate = len(failures) / n
+    if fail_rate <= max_fail_rate:
+        return 0
+    return 1
 
 
 def main() -> int:
@@ -111,8 +117,15 @@ def main() -> int:
     parser.add_argument("--concurrency", type=int, default=10)
     parser.add_argument("--iters", type=int, default=10)
     parser.add_argument("--targets", nargs="*", default=DEFAULT_TARGETS)
+    parser.add_argument(
+        "--max-fail-rate", type=float, default=0.0,
+        help="Allowed failure rate (0.0 - 1.0). Default 0 means any failure is FAIL.",
+    )
     args = parser.parse_args()
-    return asyncio.run(main_async(args.base, args.concurrency, args.iters, args.targets))
+    return asyncio.run(main_async(
+        args.base, args.concurrency, args.iters, args.targets,
+        max_fail_rate=args.max_fail_rate,
+    ))
 
 
 if __name__ == "__main__":

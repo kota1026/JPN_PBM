@@ -13,6 +13,8 @@ from app.services.fiscal_budget import (
     budget_for_year,
     fiscal_year_of,
     remaining_for_year,
+    remaining_for_year_precise,
+    spent_by_year_from_ebpm,
     total_multi_year_budget,
     validate_fiscal_year_budgets,
 )
@@ -126,6 +128,58 @@ def test_create_program_with_multi_year_and_query_endpoint():
     assert body["current_year_budget_jpy"] == 60_000_000
     assert body["total_multi_year_budget_jpy"] == 210_000_000
     assert body["is_multi_year"] is True
+
+
+def test_spent_by_year_from_ebpm_aggregates_by_fiscal_year():
+    """EBPM から年度別 spent を集計 (戦略会議 #5 採択 B)。
+
+    同じ program に 2025-04 (= FY2025) と 2026-01 (= FY2025 = 4月始まりなので) と
+    2026-04 (= FY2026) のイベントが混在しているとき、年度別に正しく分けられること。
+    """
+    from datetime import datetime as dt
+    import uuid
+
+    from app.db import get_session
+    from app.models.ebpm import EBPMEvent
+    from app.models.program import Program
+
+    db = get_session()
+    try:
+        prog = Program(
+            id="prog-by-year", name="x", description="",
+            budget_jpy=300, subsidy_bps=10000, per_citizen_cap_jpy=100,
+            start_at=dt(2025, 4, 1), end_at=dt(2027, 3, 31),
+            eligibility={}, eligible_jans=[], approved_stores=[],
+            fiscal_year_budgets={"2025": 100, "2026": 200},
+        )
+        db.add(prog); db.flush()
+
+        # 3 つの EBPM イベントを直接挿入 (ts を制御するため)
+        evs = [
+            ("2025-05-15T12:00:00", 30),  # FY2025
+            ("2026-01-10T12:00:00", 25),  # FY2025 (1月は前年度)
+            ("2026-04-20T12:00:00", 50),  # FY2026
+        ]
+        for ts_iso, subsidy in evs:
+            db.add(EBPMEvent(
+                id=str(uuid.uuid4()), program_id="prog-by-year",
+                ts=dt.fromisoformat(ts_iso),
+                jan="x", category="x", qty=1,
+                total_jpy=subsidy, subsidy_jpy=subsidy, citizen_pay_jpy=0,
+                citizen_pid="a" * 64, age_band="", gender="", ward="",
+                store_id="", store_ward="",
+            ))
+        db.commit()
+
+        by_year = spent_by_year_from_ebpm(db, prog)
+        assert by_year.get("2025") == 55
+        assert by_year.get("2026") == 50
+
+        # remaining_for_year_precise が EBPM ベースで残予算を出す
+        assert remaining_for_year_precise(db, prog, "2025") == 100 - 55
+        assert remaining_for_year_precise(db, prog, "2026") == 200 - 50
+    finally:
+        db.close()
 
 
 def test_create_program_rejects_sum_mismatch():

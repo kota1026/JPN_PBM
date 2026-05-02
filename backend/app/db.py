@@ -20,9 +20,26 @@ DB_URL = os.environ.get("JPN_PBM_DB_URL", "sqlite:///./jpn_pbm.db")
 
 _engine = create_engine(
     DB_URL,
-    connect_args={"check_same_thread": False} if DB_URL.startswith("sqlite") else {},
+    connect_args={"check_same_thread": False, "timeout": 10.0} if DB_URL.startswith("sqlite") else {},
     future=True,
 )
+
+
+# SQLite を WAL モードに切替えて読み取り並列性を上げる (戦略会議 #5 採択 E)。
+# プロセス起動時に 1 度だけ PRAGMA を投げる。MVP の SQLite が複数 worker の負荷で
+# "database is locked" を出す問題を解消する。
+if DB_URL.startswith("sqlite"):
+    from sqlalchemy import event as _event
+
+    @_event.listens_for(_engine, "connect")
+    def _set_sqlite_pragma(dbapi_connection, _connection_record):
+        cur = dbapi_connection.cursor()
+        try:
+            cur.execute("PRAGMA journal_mode=WAL")
+            cur.execute("PRAGMA synchronous=NORMAL")
+            cur.execute("PRAGMA busy_timeout=10000")
+        finally:
+            cur.close()
 SessionLocal = sessionmaker(bind=_engine, autoflush=False, autocommit=False, future=True)
 
 
