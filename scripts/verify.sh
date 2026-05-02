@@ -53,6 +53,12 @@ run_offline_fallback_e2e() {
   ok "cp6"
 }
 
+run_readiness() {
+  step "ready" "本番投入 readiness 自動診断"
+  python scripts/readiness_check.py 2>&1 | sed 's/^/    /' || fail "readiness NG"
+  ok "ready"
+}
+
 run_sweep_dryrun() {
   step "sweep" "期限切れ PBM の dry-run sweep"
   python scripts/cron_sweep.py 2>&1 | sed 's/^/    /' || fail "sweep NG"
@@ -118,6 +124,7 @@ case "$MODE" in
   sol)   run_sol_check ;;
   cp6)   run_offline_fallback_e2e ;;
   sweep) run_sweep_dryrun ;;
+  ready) run_readiness ;;
   e2e)   run_e2e ;;
   front) run_front_js_check ;;
   load)  run_load ;;
