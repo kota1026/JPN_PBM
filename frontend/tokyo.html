@@ -63,6 +63,25 @@
 </section>
 
 <section>
+  <h2>多年度予算ビュー (CFO / 政権交代耐性)</h2>
+  <p class="note" style="margin-top:-6px">
+    戦略会議 #4 採択 #11 + 戦略会議 #5 採択 B。<code>fiscal_year_budgets</code> を
+    年度別に表示し、EBPM テーブルから実績ベースで残予算を計算します。
+    多年度未設定の program は当年度予算 = budget_jpy として表示。
+  </p>
+  <div class="row" style="gap:12px;align-items:flex-end">
+    <label>プログラム
+      <select id="fyProgramSel"></select>
+    </label>
+    <label style="flex:0 0 100px">会計年度
+      <input id="fyYear" type="number" placeholder="2026">
+    </label>
+    <button type="button" id="fyRefreshBtn" class="ghost">取得</button>
+  </div>
+  <div id="fyResult" class="empty" style="margin-top:8px">未取得</div>
+</section>
+
+<section>
   <h2>加盟店 (CP-6 オフライン承認)</h2>
   <p class="note" style="margin-top:-6px">
     平時 PBM の認定に加えて、CP-6 オフラインフォールバック (災害時の coupon redemption) を
@@ -764,6 +783,73 @@ async function refreshCpViolations() {
 }
 document.getElementById('cpRefreshBtn')?.addEventListener('click', refreshCpViolations);
 
+// ----------------------------- 多年度予算ビュー -----------------------------
+async function refreshFyProgramSelect() {
+  const sel = document.getElementById('fyProgramSel');
+  if (!sel) return;
+  try {
+    const progs = await api('/programs');
+    sel.innerHTML = '';
+    for (const p of progs) {
+      const isMulti = p.fiscal_year_budgets && Object.keys(p.fiscal_year_budgets).length > 0;
+      sel.appendChild(el('option', { value: p.id }, (isMulti ? '★ ' : '') + p.name));
+    }
+  } catch (e) {
+    sel.innerHTML = '<option>取得失敗</option>';
+  }
+}
+async function refreshFyView() {
+  const out = document.getElementById('fyResult');
+  if (!out) return;
+  out.innerHTML = '';
+  out.className = '';
+  const progId = document.getElementById('fyProgramSel').value;
+  if (!progId) { out.className = 'empty'; out.textContent = 'プログラムを選択してください'; return; }
+  const yearVal = document.getElementById('fyYear').value;
+  const qs = yearVal ? ('?year=' + yearVal) : '';
+  try {
+    const r = await api('/programs/' + progId + '/fiscal-budget' + qs);
+    const card = el('div', { class: 'kpi-grid' });
+    card.appendChild(el('div', { class: 'kpi' },
+      el('div', { class: 'label' }, '会計年度'),
+      el('div', { class: 'value' }, r.fiscal_year),
+      el('div', { class: 'sub' }, r.is_multi_year ? '★ 多年度予算' : '— 単年度 (budget_jpy)')));
+    card.appendChild(el('div', { class: 'kpi navy' },
+      el('div', { class: 'label' }, '当年度予算'),
+      el('div', { class: 'value' }, fmtJpy(r.current_year_budget_jpy))));
+    card.appendChild(el('div', { class: 'kpi yellow' },
+      el('div', { class: 'label' }, '当年度残 (近似)'),
+      el('div', { class: 'value' }, fmtJpy(r.current_year_remaining_jpy))));
+    card.appendChild(el('div', { class: 'kpi yellow' },
+      el('div', { class: 'label' }, '当年度残 (EBPM 実績)'),
+      el('div', { class: 'value' }, fmtJpy(r.current_year_remaining_precise_jpy)),
+      el('div', { class: 'sub' }, '戦略会議 #5 採択 B')));
+    card.appendChild(el('div', { class: 'kpi' },
+      el('div', { class: 'label' }, '多年度総額'),
+      el('div', { class: 'value' }, fmtJpy(r.total_multi_year_budget_jpy))));
+    out.appendChild(card);
+    if (r.fiscal_year_budgets && Object.keys(r.fiscal_year_budgets).length) {
+      const tbl = el('table', { style: 'margin-top:10px' },
+        el('thead', {}, el('tr', {},
+          el('th', {}, '年度'), el('th', { class: 'num' }, '予算'),
+          el('th', { class: 'num' }, '実績 spent'))),
+        el('tbody', {}));
+      for (const y of Object.keys(r.fiscal_year_budgets).sort()) {
+        const b = r.fiscal_year_budgets[y];
+        const sp = (r.spent_by_fiscal_year || {})[y] || 0;
+        tbl.querySelector('tbody').appendChild(el('tr', {},
+          el('td', {}, y), el('td', { class: 'num' }, fmtJpy(b)),
+          el('td', { class: 'num' }, fmtJpy(sp))));
+      }
+      out.appendChild(tbl);
+    }
+  } catch (e) {
+    out.className = 'empty';
+    out.textContent = '取得失敗: ' + e.message;
+  }
+}
+document.getElementById('fyRefreshBtn')?.addEventListener('click', refreshFyView);
+
 function refreshAll() {
   refreshTreasury();
   refreshPrograms();
@@ -771,6 +857,7 @@ function refreshAll() {
   refreshPeg();
   refreshOfflineStores();
   refreshCpViolations();
+  refreshFyProgramSelect();
 }
 refreshAll();
 loadCatalog();

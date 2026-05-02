@@ -16,6 +16,15 @@
     本番は公的個人認証 (JPKI) で署名された 4 情報の VC を検証します。
     MVP では入力された 4 情報を HMAC で擬似 ID 化し、本体は保存しません。
   </p>
+  <div class="toolbar" style="margin-bottom:12px">
+    <label style="display:inline-flex;gap:6px;align-items:center;font-size:13px">
+      <input type="radio" name="authMode" value="direct" checked> 直接 (Phase 1)
+    </label>
+    <label style="display:inline-flex;gap:6px;align-items:center;font-size:13px;margin-left:12px">
+      <input type="radio" name="authMode" value="oauth"> マイナポータル v2 OAuth Mock (Phase 2)
+    </label>
+    <span class="note grow">戦略会議 #5 採択 C: Phase 1 直接ログインと Phase 2 OAuth フローを切替</span>
+  </div>
   <form id="loginForm">
     <div class="row">
       <label>マイナンバー (擬似)
@@ -114,10 +123,55 @@ window.__drawQR = drawQR;
 <script>
 let pid = null;
 
+function _authMode() {
+  const checked = document.querySelector('input[name=authMode]:checked');
+  return checked ? checked.value : 'direct';
+}
+
+async function _loginViaOAuth(mainaId) {
+  // Authorization Code Grant: state を発行 → consent POST → token 交換 → userinfo
+  const state = Math.random().toString(36).slice(2);
+  const consentRes = await api('/myna/v2/authorize/consent', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      maina_id: mainaId,
+      redirect_uri: 'http://localhost:8000/cb',
+      state,
+      scope: 'family_register.basic_4 address.ward',
+      program_id: 'prog-koto-kosodate-2026',
+      consent_text_sha256: '0'.repeat(64),
+    }),
+  });
+  const code = consentRes.redirect_to.split('code=')[1].split('&')[0];
+  const tok = await api('/myna/v2/token', {
+    method: 'POST',
+    body: JSON.stringify({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: 'http://localhost:8000/cb',
+      client_id: 'tokyo-metro-pbm',
+    }),
+  });
+  return tok.pid;
+}
+
 document.getElementById('loginForm').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   const fd = new FormData(ev.target);
   try {
+    if (_authMode() === 'oauth') {
+      pid = await _loginViaOAuth(fd.get('maina_id'));
+      // 直接 login は実行しないが、認証されたことを表示
+      document.getElementById('me').innerHTML = '';
+      document.getElementById('me').appendChild(el('div', { class: 'receipt' },
+        el('h3', {}, '認証完了 (OAuth Mock)'),
+        el('div', {}, '擬似 ID (HMAC, 不可逆): ', el('code', {}, pid)),
+        el('div', { class: 'note' }, 'マイナポータル v2 OAuth フロー (Phase 2) で取得')));
+      await renderQR();
+      await refreshAll();
+      return;
+    }
     const r = await api('/auth/myna/login', { method: 'POST', body: JSON.stringify({
       maina_id: fd.get('maina_id'),
       name: fd.get('name'),

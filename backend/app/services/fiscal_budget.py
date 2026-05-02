@@ -14,6 +14,10 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Iterable
 
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from app.models.ebpm import EBPMEvent
 from app.models.program import Program
 
 
@@ -63,6 +67,64 @@ def remaining_for_year(program: Program, year: str | None = None) -> int:
         elif y == fy:
             return max(b - spent_remaining, 0)
     return 0
+
+
+def spent_by_year_from_ebpm(db: Session, program: Program) -> dict[str, int]:
+    """EBPM テーブルから program の年度別 spent を集計 (戦略会議 #5 採択 B)。
+
+    Round 5 の `remaining_for_year` は spent_jpy を「過年度から順に消化済」と
+    みなす近似だったが、本関数は EBPMEvent.ts (= 実際の spend 時刻) を使って
+    精度を上げる。マイグレーションは不要 (テーブル既存)。
+    """
+    rows = db.execute(
+        select(
+            func.strftime("%Y", EBPMEvent.ts),
+            func.coalesce(func.sum(EBPMEvent.subsidy_jpy), 0),
+        )
+        .where(EBPMEvent.program_id == program.id)
+        .group_by(func.strftime("%Y", EBPMEvent.ts))
+    ).all()
+    out: dict[str, int] = {}
+    for year_str, total in rows:
+        # event.ts は西暦 (4 月始まりの会計年度ではない)。会計年度に変換。
+        # ここでは月情報も必要なので、別 query で月単位に集計し直す。
+        pass
+
+    # 月別に集計し、4 月始まりで会計年度を判定する
+    rows2 = db.execute(
+        select(
+            func.strftime("%Y-%m", EBPMEvent.ts),
+            func.coalesce(func.sum(EBPMEvent.subsidy_jpy), 0),
+        )
+        .where(EBPMEvent.program_id == program.id)
+        .group_by(func.strftime("%Y-%m", EBPMEvent.ts))
+    ).all()
+    out = {}
+    for ym, total in rows2:
+        if not ym:
+            continue
+        y, m = ym.split("-")
+        fy = y if int(m) >= 4 else str(int(y) - 1)
+        out[fy] = out.get(fy, 0) + int(total)
+    return out
+
+
+def remaining_for_year_precise(
+    db: Session, program: Program, year: str | None = None,
+) -> int:
+    """EBPM 実績ベースで当年度残予算を算出 (戦略会議 #5 採択 B)。
+
+    `remaining_for_year` (近似版) との違い: spent を年度に分散できる。
+    """
+    fy = year or fiscal_year_of()
+    multi = program.fiscal_year_budgets or {}
+    by_year = spent_by_year_from_ebpm(db, program)
+    if not multi:
+        # 単年度: 当年度予算 = budget_jpy、消化分は spent_jpy
+        return max(program.budget_jpy - program.spent_jpy, 0)
+    budget = int(multi.get(fy, 0))
+    spent = by_year.get(fy, 0)
+    return max(budget - spent, 0)
 
 
 def validate_fiscal_year_budgets(

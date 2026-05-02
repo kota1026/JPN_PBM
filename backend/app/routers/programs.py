@@ -21,6 +21,8 @@ from app.services.fiscal_budget import (
     budget_for_year,
     fiscal_year_of,
     remaining_for_year,
+    remaining_for_year_precise,
+    spent_by_year_from_ebpm,
     total_multi_year_budget,
     validate_fiscal_year_budgets,
 )
@@ -149,14 +151,17 @@ def get_fiscal_budget(program_id: str, year: str | None = None, db: Session = De
     if p is None:
         raise HTTPException(404, "program not found")
     fy = year or fiscal_year_of()
+    by_year = spent_by_year_from_ebpm(db, p)
     return {
         "program_id": program_id,
         "fiscal_year": fy,
         "fiscal_year_budgets": p.fiscal_year_budgets or {},
         "current_year_budget_jpy": budget_for_year(p, fy),
         "current_year_remaining_jpy": remaining_for_year(p, fy),
+        "current_year_remaining_precise_jpy": remaining_for_year_precise(db, p, fy),
         "total_multi_year_budget_jpy": total_multi_year_budget(p),
         "spent_jpy": p.spent_jpy,
+        "spent_by_fiscal_year": by_year,
         "is_multi_year": bool(p.fiscal_year_budgets),
     }
 
