@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.types import Scope
 
 from app.db import init_db
-from app.routers import auth, ebpm, products, programs, purchase, seed, wallet
+from app.routers import auth, ebpm, offline, products, programs, purchase, seed, wallet
 
 
 @contextlib.asynccontextmanager
@@ -41,6 +41,7 @@ app.include_router(wallet.router)
 app.include_router(products.router)
 app.include_router(purchase.router)
 app.include_router(ebpm.router)
+app.include_router(offline.router)
 app.include_router(seed.router)
 
 # 静的フロントエンド

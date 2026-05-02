@@ -1,5 +1,31 @@
 [
   {
+    "id": "prog-koto-kosodate-2026",
+    "name": "江東区 こども・くらし応援 PBM 2026 (フラッグシップ)",
+    "description": "戦略会議 #1 採択フラッグシップ。江東区の 0–18 歳子育て世帯 1,000 世帯 × 加盟店 30 店舗で実施する DBS-OGP 型 CDC バウチャー東京移植版。月 5,000 円相当の食品・日用品+防災備蓄 PBM (018サポートの一部置換)。Phase 1 (M+5) で 1,000 世帯到達、Phase 2 で 5万→20万世帯へ拡張。CP-6 オフラインフォールバック必須。",
+    "budget_jpy": 60000000,
+    "subsidy_bps": 10000,
+    "per_citizen_cap_jpy": 60000,
+    "start_at": "2026-04-01T00:00:00",
+    "end_at":   "2026-12-31T23:59:59",
+    "eligibility": {
+      "wards": ["江東区"],
+      "min_age": 18,
+      "max_age": 64
+    },
+    "eligible_categories": [
+      "food.baby",
+      "food.daily",
+      "goods.baby",
+      "disaster.water",
+      "disaster.food",
+      "disaster.gear"
+    ],
+    "eligible_jans": [],
+    "excluded_jans": [],
+    "approved_stores": ["store-aeon-koto"]
+  },
+  {
     "id": "prog-eco-2026",
     "name": "省エネ家電購入支援 2026",
     "description": "都内在住者を対象に、対象省エネ家電 (家電カテゴリ全般) の購入額の30%を助成 (上限5万円)。",
