@@ -28,9 +28,45 @@
 </section>
 
 <section>
+  <h2>準備金監査 / JPYC ペッグ / CP-6 災害時可用性</h2>
+  <p class="note">
+    戦略会議 #2 (2026-05-02) 採択。<b>準備金監査</b>: 24h で treasury 残高 vs 発行済 PBM を突合。
+    <b>JPYC ペッグ</b>: ±100bps で ALERT、±300bps で AUTO-FREEZE。
+    <b>CP-6</b>: 首都直下時のオフライン QR フェイルセーフ (世界初)。
+  </p>
+  <div class="row" style="gap:12px;flex-wrap:wrap">
+    <div class="kpi" style="flex:1;min-width:240px">
+      <div class="label">準備金監査</div>
+      <div class="value" id="auditHealth">-</div>
+      <div class="sub" id="auditSub">/treasury/audit を呼び出し中…</div>
+    </div>
+    <div class="kpi" style="flex:1;min-width:240px">
+      <div class="label">JPYC ペッグ</div>
+      <div class="value" id="pegHealth">-</div>
+      <div class="sub" id="pegSub">/treasury/peg/status を呼び出し中…</div>
+    </div>
+    <div class="kpi" style="flex:1;min-width:240px">
+      <div class="label">CP-6 オフライン QR (江東区フラッグシップ)</div>
+      <div class="value" id="cp6Status">準備完了</div>
+      <div class="sub">
+        <code>POST /offline/coupons</code> で月次 QR 発行 →
+        POS 端末がオフラインでも給付 →
+        復旧後 <code>POST /offline/redeem-batch</code> で集中精算。
+        <a href="https://github.com/kota1026/JPN_PBM/blob/main/docs/cp6-offline-fallback.md" target="_blank">仕様</a>
+      </div>
+    </div>
+  </div>
+  <div class="row" style="margin-top:12px">
+    <button type="button" id="reAuditBtn">監査を再実行</button>
+    <span class="note grow" style="align-self:center">※ 本番は cron で 24h 自動。SOC が手動で freeze/unfreeze 可能。</span>
+  </div>
+</section>
+
+<section>
   <h2>助成金プログラム</h2>
   <div class="toolbar">
     <span class="note grow">予算 / 消化額 / 助成率 / 期間 / 対象カテゴリ + JAN を一覧表示</span>
+    <span class="badge" title="戦略会議 #1 で採択された Phase 1 フラッグシップ">★ フラッグシップ: <code>prog-koto-kosodate-2026</code> (江東区)</span>
   </div>
   <div id="programList" class="empty">読み込み中…</div>
 </section>
@@ -555,7 +591,71 @@ document.getElementById('newForm').addEventListener('submit', async (ev) => {
   }
 });
 
-function refreshAll() { refreshTreasury(); refreshPrograms(); }
+async function refreshAudit() {
+  const sub = document.getElementById('auditSub');
+  const head = document.getElementById('auditHealth');
+  try {
+    const r = await api('/treasury/audit');
+    head.textContent = r.healthy ? '✓ Healthy' : '⚠ Alert';
+    head.style.color = r.healthy ? 'var(--green, #2a8a3e)' : 'var(--red, #c0392b)';
+    const t = r.totals, p = r.pbm;
+    sub.innerHTML =
+      `<div>treasury: ${fmtJpy(t.treasury_balance_jpy)} / `
+      + `stores: ${fmtJpy(t.store_balance_jpy)} / `
+      + `citizens: ${fmtJpy(t.citizen_balance_jpy)}</div>`
+      + `<div>PBM 残: ${fmtJpy(p.issued_token_remaining_jpy)} / `
+      + `program 余剰: ${fmtJpy(p.program_outstanding_jpy)}</div>`
+      + (r.alerts.length
+          ? `<div style="color:var(--red,#c0392b)">${r.alerts.map(a => `▲ ${a}`).join('<br>')}</div>`
+          : '');
+  } catch (e) {
+    head.textContent = '? unknown';
+    sub.textContent = '監査 API への接続に失敗: ' + e.message;
+  }
+}
+
+async function refreshPeg() {
+  const sub = document.getElementById('pegSub');
+  const head = document.getElementById('pegHealth');
+  try {
+    const r = await api('/treasury/peg/status');
+    if (!r.last_sample) {
+      head.textContent = '— サンプル未投入';
+      sub.textContent = 'POST /treasury/peg/sample でスポット価格を投入してください';
+      return;
+    }
+    const s = r.last_sample;
+    if (r.frozen) {
+      head.textContent = '⛔ FROZEN';
+      head.style.color = 'var(--red, #c0392b)';
+    } else if (r.healthy) {
+      head.textContent = '✓ Healthy';
+      head.style.color = 'var(--green, #2a8a3e)';
+    } else {
+      head.textContent = '⚠ Alert';
+      head.style.color = 'var(--orange, #d35400)';
+    }
+    sub.innerHTML =
+      `<div>spot: ${s.spot_jpy_per_jpyc.toFixed(4)} JPY/JPYC</div>`
+      + `<div>偏差: ${s.deviation_bps} bps (${s.deviation_pct.toFixed(2)}%)</div>`
+      + `<div class="note">サンプル数: ${r.samples_n}</div>`;
+  } catch (e) {
+    head.textContent = '? unknown';
+    sub.textContent = 'Peg API への接続に失敗: ' + e.message;
+  }
+}
+
+document.getElementById('reAuditBtn')?.addEventListener('click', () => {
+  refreshAudit();
+  refreshPeg();
+});
+
+function refreshAll() {
+  refreshTreasury();
+  refreshPrograms();
+  refreshAudit();
+  refreshPeg();
+}
 refreshAll();
 loadCatalog();
 </script>
