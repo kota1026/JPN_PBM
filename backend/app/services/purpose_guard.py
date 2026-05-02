@@ -16,11 +16,15 @@
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Iterable
+from typing import Iterable, Optional
+
+from sqlalchemy.orm import Session
 
 from app.models.citizen import Citizen
+from app.models.cp_violation import CPViolation
 from app.models.pbm import PBMToken
 from app.models.product import Product
 from app.models.program import Program
@@ -243,3 +247,33 @@ def guard_offline_redemption(
 def age_in_program_window(citizen: Citizen, program: Program) -> int:
     """program 開始時点での citizen 年齢 (eligibility と整合させたい場合に使う)。"""
     return age(citizen.dob, today=program.start_at.date())
+
+
+# ----------------------------- 違反ログ -----------------------------
+
+
+def record_violation(
+    db: Session,
+    decision: Decision,
+    *,
+    program_id: str = "",
+    store_id: str = "",
+    pid: str = "",
+) -> Optional[CPViolation]:
+    """deny された Decision を CPViolation として永続化する。
+
+    pid は CP-2 のため 8 文字 prefix のみ保存。
+    """
+    if decision.ok:
+        return None
+    v = CPViolation(
+        id=str(uuid.uuid4()),
+        code=decision.code,
+        why=decision.why[:255],
+        program_id=program_id or "",
+        store_id=store_id or "",
+        pid_prefix=(pid[:8] if pid else ""),
+    )
+    db.add(v)
+    db.flush()
+    return v

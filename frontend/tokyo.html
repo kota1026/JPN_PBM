@@ -63,6 +63,30 @@
 </section>
 
 <section>
+  <h2>加盟店 (CP-6 オフライン承認)</h2>
+  <p class="note" style="margin-top:-6px">
+    平時 PBM の認定に加えて、CP-6 オフラインフォールバック (災害時の coupon redemption) を
+    各加盟店に許可する/しないを切り替える管理画面。POST <code>/offline/stores/approve</code> を呼びます。
+  </p>
+  <div id="storeOfflineList" class="empty">読み込み中…</div>
+</section>
+
+<section>
+  <h2>CP-1〜CP-6 違反ダッシュボード (Purpose Guardian)</h2>
+  <p class="note" style="margin-top:-6px">
+    runtime ガード (purpose_guard) が deny した件数を CP コード別に集計。
+    spend / offline 両経路で発生した違反のうち、過去発生分の上位を表示します。
+    個票は出ません (pid prefix 8 文字までしか保存しない)。
+  </p>
+  <div class="row" style="gap:12px;align-items:flex-end">
+    <button type="button" id="cpRefreshBtn" class="ghost">違反集計を更新</button>
+    <span class="note grow">最新 20 件 + コード別集計</span>
+  </div>
+  <div id="cpViolationStats" class="empty" style="margin-top:8px">未取得</div>
+  <div id="cpViolationRecent" class="empty" style="margin-top:8px"></div>
+</section>
+
+<section>
   <h2>助成金プログラム</h2>
   <div class="toolbar">
     <span class="note grow">予算 / 消化額 / 助成率 / 期間 / 対象カテゴリ + JAN を一覧表示</span>
@@ -650,11 +674,103 @@ document.getElementById('reAuditBtn')?.addEventListener('click', () => {
   refreshPeg();
 });
 
+// ----------------------------- 加盟店 (CP-6 offline approve) -----------------------------
+const APPROVED_KEY = 'jpn_pbm_offline_approved_stores';
+function loadApprovedStores() {
+  try { return new Set(JSON.parse(localStorage.getItem(APPROVED_KEY) || '[]')); }
+  catch { return new Set(); }
+}
+function saveApprovedStores(set) {
+  localStorage.setItem(APPROVED_KEY, JSON.stringify([...set]));
+}
+
+async function refreshOfflineStores() {
+  const root = document.getElementById('storeOfflineList');
+  root.innerHTML = '';
+  root.className = '';
+  let stores = [];
+  try { stores = await api('/stores'); }
+  catch (e) { root.className = 'empty'; root.textContent = '加盟店取得失敗: ' + e.message; return; }
+  if (!stores.length) { root.className = 'empty'; root.textContent = '加盟店なし'; return; }
+  const approved = loadApprovedStores();
+  const tbl = el('table', {},
+    el('thead', {}, el('tr', {},
+      el('th', {}, '店舗 ID'), el('th', {}, '名称'), el('th', {}, '区'),
+      el('th', {}, 'CP-6 ステータス'), el('th', {}, '操作'))),
+    el('tbody', {}));
+  for (const s of stores) {
+    const isApproved = approved.has(s.id);
+    tbl.querySelector('tbody').appendChild(el('tr', {},
+      el('td', {}, el('code', {}, s.id)),
+      el('td', {}, s.name),
+      el('td', {}, s.ward),
+      el('td', {}, el('span', { class: isApproved ? 'badge' : 'badge gray' },
+        isApproved ? '✓ approved' : '— 未承認')),
+      el('td', {}, el('button', {
+        class: isApproved ? 'ghost' : '',
+        style: 'padding:4px 10px; font-size:11px',
+        onclick: async () => {
+          try {
+            await api('/offline/stores/approve', { method: 'POST', body: JSON.stringify({ store_id: s.id }) });
+            const set = loadApprovedStores();
+            set.add(s.id);
+            saveApprovedStores(set);
+            refreshOfflineStores();
+          } catch (e) { alert('承認失敗: ' + e.message); }
+        },
+      }, isApproved ? '再承認' : 'CP-6 を承認'))));
+  }
+  root.appendChild(tbl);
+}
+
+// ----------------------------- CP 違反ダッシュボード -----------------------------
+async function refreshCpViolations() {
+  const stats = document.getElementById('cpViolationStats');
+  const recent = document.getElementById('cpViolationRecent');
+  stats.innerHTML = ''; recent.innerHTML = '';
+  try {
+    const rows = await api('/ebpm/violations');
+    if (!rows.length) {
+      stats.className = 'empty';
+      stats.textContent = '違反 0 件 (Purpose Guardian: 健全)';
+    } else {
+      stats.className = '';
+      const tbl = el('table', {},
+        el('thead', {}, el('tr', {}, el('th', {}, 'CP コード'), el('th', { class: 'num' }, '件数'), el('th', {}, '最終発生'))),
+        el('tbody', {}));
+      for (const r of rows) {
+        tbl.querySelector('tbody').appendChild(el('tr', {},
+          el('td', {}, el('code', {}, r.code)),
+          el('td', { class: 'num' }, String(r.count)),
+          el('td', {}, r.last_at ? r.last_at.replace('T', ' ').slice(0, 19) : '-')));
+      }
+      stats.appendChild(tbl);
+    }
+    const recentRows = await api('/ebpm/violations/recent?limit=10');
+    recent.className = recentRows.length ? '' : 'empty';
+    if (recentRows.length) {
+      const ul = el('ul', { style: 'margin:0; padding-left:18px; font-size:12px' });
+      for (const v of recentRows) {
+        ul.appendChild(el('li', {}, `[${v.code}] ${v.why} (program=${v.program_id || '-'}, store=${v.store_id || '-'}, pid=${v.pid_prefix || '-'})`));
+      }
+      recent.appendChild(ul);
+    } else {
+      recent.textContent = '直近の違反履歴なし';
+    }
+  } catch (e) {
+    stats.className = 'empty';
+    stats.textContent = '取得失敗: ' + e.message;
+  }
+}
+document.getElementById('cpRefreshBtn')?.addEventListener('click', refreshCpViolations);
+
 function refreshAll() {
   refreshTreasury();
   refreshPrograms();
   refreshAudit();
   refreshPeg();
+  refreshOfflineStores();
+  refreshCpViolations();
 }
 refreshAll();
 loadCatalog();

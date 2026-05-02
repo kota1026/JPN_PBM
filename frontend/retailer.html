@@ -57,6 +57,31 @@
 </section>
 
 <section>
+  <h2>CP-6 ネット断モード (災害時オフライン給付)</h2>
+  <p class="note" style="margin-top:-6px">
+    首都直下発生時など RPC が落ちている状況のフェイルセーフ。
+    住民が事前ダウンロードしたオフライン QR をスキャンして、その場で給付を実行 → ローカルに溜め、
+    通信復旧後に「一括精算」を押すと <code>/offline/redeem-batch</code> へまとめて送信されます。
+  </p>
+  <div class="row" style="gap:12px;flex-wrap:wrap;align-items:flex-end">
+    <label style="flex:1;min-width:200px">オフライン coupon QR をスキャン
+      <button type="button" id="scanCouponBtn" class="secondary" style="display:block;margin-top:6px">📷 coupon QR をスキャン</button>
+    </label>
+    <label style="flex:0 0 130px">給付金額 (JPY)
+      <input id="offlineAmount" type="number" min="1" placeholder="例: 1500">
+    </label>
+    <button type="button" id="redeemOfflineBtn" class="ghost">オフラインで給付 → キュー</button>
+  </div>
+  <div id="couponInfo" class="note" style="margin-top:8px"></div>
+  <div class="row" style="margin-top:12px;gap:12px;align-items:center">
+    <span class="badge gray">ローカルキュー件数: <span id="queueCount">0</span></span>
+    <button type="button" id="flushQueueBtn">復旧後 一括精算 (flush)</button>
+    <button type="button" id="clearQueueBtn" class="ghost">キューを破棄</button>
+  </div>
+  <div id="offlineResult" style="margin-top:8px"></div>
+</section>
+
+<section>
   <h2>商品マスタ (JAN 早見表)</h2>
   <p class="note" style="margin-top:-6px">テスト用の一覧です。バーコードをスキャンできない環境では「使う」で JAN を入力欄にコピーできます。</p>
   <div id="productList" class="empty">読み込み中…</div>
@@ -213,6 +238,107 @@ function flash(msg) {
   out.appendChild(div);
   setTimeout(() => { if (out.contains(div)) div.remove(); }, 1500);
 }
+
+// ----------------------------- CP-6 オフライン給付 -----------------------------
+const QUEUE_KEY = 'jpn_pbm_offline_queue';
+let scannedCoupon = null;
+
+function loadQueue() {
+  try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); }
+  catch { return []; }
+}
+function saveQueue(q) { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); }
+function refreshQueueCount() {
+  document.getElementById('queueCount').textContent = String(loadQueue().length);
+}
+
+document.getElementById('scanCouponBtn').addEventListener('click', async () => {
+  const info = document.getElementById('couponInfo');
+  info.innerHTML = '';
+  try {
+    const { text } = await window.__scanOnce({
+      title: 'オフライン coupon QR をスキャン',
+      formatHint: 'JSON 形式の signed coupon を読み取ります',
+      filter: (t, f) => f === 'qr_code' || f === 'manual',
+    });
+    let payload;
+    try { payload = JSON.parse(text); }
+    catch { throw new Error('QR が JSON ではありません'); }
+    const required = ['program_id', 'pid', 'month_index', 'cap_jpy', 'expires_at', 'signature'];
+    for (const k of required) if (!(k in payload)) throw new Error('missing field: ' + k);
+    scannedCoupon = payload;
+    info.innerHTML = `<b>受領 OK</b> — program=${payload.program_id} / pid=${String(payload.pid).slice(0,8)}… / cap=${fmtJpy(payload.cap_jpy)}`;
+    info.style.color = '';
+  } catch (e) {
+    info.textContent = 'スキャン失敗: ' + e.message;
+    info.style.color = '#c0392b';
+  }
+});
+
+document.getElementById('redeemOfflineBtn').addEventListener('click', () => {
+  const out = document.getElementById('offlineResult');
+  out.innerHTML = '';
+  if (!scannedCoupon) {
+    out.appendChild(el('div', { class: 'error' }, '先にクーポン QR をスキャンしてください'));
+    return;
+  }
+  const amount = Number(document.getElementById('offlineAmount').value);
+  if (!amount || amount <= 0) {
+    out.appendChild(el('div', { class: 'error' }, '金額を入れてください'));
+    return;
+  }
+  if (amount > scannedCoupon.cap_jpy) {
+    out.appendChild(el('div', { class: 'error' }, 'cap (' + fmtJpy(scannedCoupon.cap_jpy) + ') を超過'));
+    return;
+  }
+  const storeId = document.getElementById('storeSel').value;
+  const item = {
+    ...scannedCoupon,
+    store_id: storeId,
+    amount_jpy: amount,
+    redeemed_at: Math.floor(Date.now() / 1000),
+  };
+  const q = loadQueue();
+  q.push(item);
+  saveQueue(q);
+  refreshQueueCount();
+  out.appendChild(el('div', { class: 'badge' }, 'キュー追加 OK / 残 ' + q.length + ' 件'));
+});
+
+document.getElementById('flushQueueBtn').addEventListener('click', async () => {
+  const out = document.getElementById('offlineResult');
+  out.innerHTML = '';
+  const q = loadQueue();
+  if (!q.length) {
+    out.appendChild(el('div', { class: 'badge gray' }, 'キューが空です'));
+    return;
+  }
+  // 全 item の store_id が同じであることを確認
+  const storeId = q[0].store_id;
+  if (q.some(x => x.store_id !== storeId)) {
+    out.appendChild(el('div', { class: 'error' }, '異なる store_id が混在しています。手動でキューを整えてください。'));
+    return;
+  }
+  try {
+    const r = await api('/offline/redeem-batch', { method: 'POST', body: JSON.stringify({ store_id: storeId, items: q }) });
+    out.appendChild(el('div', { class: 'receipt' },
+      el('h3', {}, '一括精算 完了'),
+      el('div', {}, '受理: ' + r.accepted_count + ' / 拒否: ' + r.rejected_count + ' / 入金 ' + fmtJpy(r.total_paid_jpy))));
+    saveQueue([]);
+    refreshQueueCount();
+    refreshStoreBalance(storeId);
+  } catch (e) {
+    out.appendChild(el('div', { class: 'error' }, '精算失敗: ' + e.message));
+  }
+});
+
+document.getElementById('clearQueueBtn').addEventListener('click', () => {
+  if (!confirm('ローカルキューを破棄します。よろしいですか?')) return;
+  saveQueue([]);
+  refreshQueueCount();
+});
+
+refreshQueueCount();
 
 loadStores();
 loadProducts();

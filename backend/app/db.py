@@ -57,6 +57,7 @@ def init_db() -> None:
     from app.models import (  # noqa: F401
         citizen,
         consent,
+        cp_violation,
         ebpm,
         pbm,
         product,

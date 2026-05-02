@@ -196,6 +196,12 @@ def redeem_batch(payload: BatchIn, db: Session = Depends(_db)) -> BatchOut:
             # 上位レイヤがアラート対象にできるようにする。
             res.rejected.append((r, f"{guard.code}: {guard.why}"))
             res.total_paid_jpy -= r.amount_jpy
+            purpose_guard.record_violation(
+                db, guard,
+                program_id=r.coupon.program_id,
+                store_id=r.store_id,
+                pid=r.coupon.pid,
+            )
             continue
 
         event = EBPMEvent(id=str(uuid.uuid4()), **event_dict)

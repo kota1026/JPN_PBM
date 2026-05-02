@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import get_session
+from app.models.cp_violation import CPViolation
 from app.models.ebpm import EBPMEvent
 from app.models.program import Program
 
@@ -120,3 +121,46 @@ def program_uptake(program_id: str, db: Session = Depends(_db)):
         "unique_citizens": uniq,
         "subsidy_jpy": subsidy,
     }
+
+
+@router.get("/violations")
+def violations(
+    program_id: str | None = None,
+    db: Session = Depends(_db),
+):
+    """CP-1〜CP-6 違反の集計 (戦略会議 #3 採択 #8)。
+
+    code 別に件数 + 直近 1 件の発生時刻を返す。Purpose Guardian がダッシュボードで
+    眺める用。個票は返さず、集計のみ。
+    """
+    q = select(
+        CPViolation.code,
+        func.count(CPViolation.id),
+        func.max(CPViolation.occurred_at),
+    ).group_by(CPViolation.code).order_by(func.count(CPViolation.id).desc())
+    if program_id:
+        q = q.where(CPViolation.program_id == program_id)
+    rows = db.execute(q).all()
+    return [
+        {"code": code, "count": int(cnt), "last_at": last.isoformat() if last else None}
+        for code, cnt, last in rows
+    ]
+
+
+@router.get("/violations/recent")
+def violations_recent(limit: int = Query(20, ge=1, le=200), db: Session = Depends(_db)):
+    """直近の違反 (program_id / store_id / pid_prefix のみ、why 含む)。"""
+    rows = db.execute(
+        select(CPViolation).order_by(CPViolation.occurred_at.desc()).limit(limit)
+    ).scalars().all()
+    return [
+        {
+            "code": v.code,
+            "why": v.why,
+            "program_id": v.program_id,
+            "store_id": v.store_id,
+            "pid_prefix": v.pid_prefix,
+            "occurred_at": v.occurred_at.isoformat() if v.occurred_at else None,
+        }
+        for v in rows
+    ]
