@@ -59,4 +59,36 @@ test.describe('フラッグシップ通しシナリオ', () => {
     const body = await r.json();
     expect(Array.isArray(body)).toBeTruthy();
   });
+
+  // ----------------- 戦略会議 #6 採択 D: OAuth + 多年度ビュー追加 -----------------
+
+  test('⑤ 住民マイページ: Phase 1/2 OAuth ラジオが切替可能', async ({ page }) => {
+    await page.goto('/ui/citizen.html');
+    const direct = page.locator('input[name=authMode][value=direct]');
+    const oauth = page.locator('input[name=authMode][value=oauth]');
+    await expect(direct).toBeChecked();
+    await oauth.check();
+    await expect(oauth).toBeChecked();
+    await expect(direct).not.toBeChecked();
+  });
+
+  test('⑥ 都管理画面: 多年度予算ビューのセクションが存在', async ({ page }) => {
+    await page.goto('/ui/tokyo.html');
+    await expect(page.locator('h2', { hasText: '多年度予算ビュー' })).toBeVisible();
+    await expect(page.locator('#fyProgramSel')).toBeVisible();
+    await expect(page.locator('#fyRefreshBtn')).toBeVisible();
+  });
+
+  test('⑦ Treasury: keys/rotation + migrations/status が 200', async ({ request }) => {
+    const r1 = await request.get('/treasury/keys/rotation');
+    expect(r1.ok()).toBeTruthy();
+    const body1 = await r1.json();
+    expect(body1).toHaveProperty('configured_keys');
+
+    const r2 = await request.get('/treasury/migrations/status');
+    expect(r2.ok()).toBeTruthy();
+    const body2 = await r2.json();
+    expect(body2).toHaveProperty('dialect');
+    expect(Array.isArray(body2.applied)).toBeTruthy();
+  });
 });

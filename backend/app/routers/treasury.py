@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.db import get_session
-from app.services import peg_monitor
+from app.services import key_management, peg_monitor
 from app.services.treasury_audit import (
     DEFAULT_ALERT_THRESHOLD_JPY,
     audit_reserves,
@@ -147,6 +147,23 @@ def freeze(payload: PegFreezeIn) -> dict[str, str]:
     monitor = peg_monitor.get_monitor()
     msg = monitor.manual_freeze(by=payload.by, reason=payload.reason)
     return {"result": msg}
+
+
+@router.get("/keys/rotation")
+def keys_rotation() -> dict[str, object]:
+    """ECDSA 鍵 rotation 状態 (戦略会議 #6 採択 A)。
+
+    本エンドポイントは公開鍵 (address) しか返さない。秘密鍵は env だけで管理。
+    """
+    return key_management.rotation_status()
+
+
+@router.get("/migrations/status")
+def migrations_status() -> dict[str, object]:
+    """DB マイグレーション状態 (戦略会議 #6 採択 C)。"""
+    from app.db import _engine
+    from migrations import status as _migration_status
+    return _migration_status(_engine)
 
 
 @router.post("/peg/unfreeze")
