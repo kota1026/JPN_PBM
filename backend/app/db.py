@@ -87,6 +87,13 @@ def init_db() -> None:
     _migrate(_engine)               # 既存テーブルにカラムを追加
     Base.metadata.create_all(bind=_engine)  # 無いテーブルは作る
 
+    # 戦略会議 #6 採択 C: 番号付き migrations (PostgreSQL/SQLite 両対応) を順次適用
+    try:
+        from migrations import run_migrations  # noqa: WPS433
+        run_migrations(_engine)
+    except Exception as e:  # pragma: no cover
+        log.warning("migrations failed: %s", e)
+
 
 def get_session() -> Session:
     return SessionLocal()
