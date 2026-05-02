@@ -49,3 +49,8 @@ class Program(Base):
 
     revoked: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    # 多年度予算条例化 (戦略会議 #4 採択 #11)。
+    # 形式: {"2026": 60000000, "2027": 70000000, "2028": 80000000}
+    # 空 dict のときは budget_jpy を当年度予算として扱う (後方互換)。
+    fiscal_year_budgets: Mapped[dict] = mapped_column(JSON, default=dict)

@@ -59,6 +59,41 @@ run_sweep_dryrun() {
   ok "sweep"
 }
 
+run_load() {
+  step "load" "100 並列 × 100 反復のスモーク負荷試験"
+  if ! python -c "import httpx" 2>/dev/null; then
+    printf "  \033[1;33m⊝\033[0m httpx 未インストール — skip\n"
+    return 0
+  fi
+  # 内蔵 uvicorn を一時的に立ち上げて叩く (port 8765)
+  ( cd backend && JPN_PBM_DB_URL=sqlite:////tmp/loadtest.db python -c "
+import uvicorn, threading, time, sys, os
+from app.main import app
+cfg = uvicorn.Config(app, host='127.0.0.1', port=8765, log_level='warning')
+srv = uvicorn.Server(cfg)
+import threading
+t = threading.Thread(target=srv.run, daemon=True); t.start()
+for _ in range(40):
+    if srv.started: break
+    time.sleep(0.1)
+" > /tmp/loadsrv.log 2>&1 ) &
+  local LSPID=$!
+  ( cd backend && JPN_PBM_DB_URL=sqlite:////tmp/loadtest.db uvicorn app.main:app \
+      --host 127.0.0.1 --port 8766 --log-level warning > /tmp/loadsrv2.log 2>&1 ) &
+  local LSPID2=$!
+  # wait for server
+  for i in 1 2 3 4 5 6 7 8; do
+    if curl -sf http://127.0.0.1:8766/api > /dev/null 2>&1; then break; fi
+    sleep 0.4
+  done
+  python scripts/loadtest.py --base http://127.0.0.1:8766 --concurrency 20 --iters 20 \
+    | sed 's/^/    /' || { kill $LSPID2 2>/dev/null; rm -f /tmp/loadtest.db; fail "load NG"; }
+  kill $LSPID $LSPID2 2>/dev/null
+  wait 2>/dev/null
+  rm -f /tmp/loadtest.db
+  ok "load"
+}
+
 run_e2e() {
   step "e2e" "Playwright E2E (tokyo→citizen→retailer 通し)"
   if ! command -v playwright >/dev/null 2>&1; then
@@ -81,6 +116,7 @@ case "$MODE" in
   sweep) run_sweep_dryrun ;;
   e2e)   run_e2e ;;
   front) run_front_js_check ;;
+  load)  run_load ;;
   quick) run_pytest; run_seed_check ;;
   all|*) run_pytest; run_seed_check; run_sol_check; run_front_js_check ;;
 esac
