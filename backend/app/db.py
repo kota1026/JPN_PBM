@@ -56,6 +56,7 @@ def init_db() -> None:
     # モデル登録のために import (副作用)
     from app.models import (  # noqa: F401
         citizen,
+        consent,
         ebpm,
         pbm,
         product,

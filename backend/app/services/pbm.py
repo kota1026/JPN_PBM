@@ -118,13 +118,14 @@ def spend(
     total = product.price_jpy * qty
 
     # 適用可能なプログラム = JAN を含む & 加盟店認定 & 期間内 & 取消されていない & 当該住民に PBM がある
+    # 戦略会議 #2 採択: "最初にマッチ" ではなく "最も住民有利 (subsidy 最大)" を選ぶ。
+    # tie-break は (1) per_citizen_cap 残量大 (2) program.id 昇順 で安定化。
     now = datetime.utcnow()
     candidate_programs = db.execute(
         select(Program).where(Program.revoked.is_(False))
     ).scalars().all()
 
-    chosen_program: Program | None = None
-    chosen_token: PBMToken | None = None
+    candidates: list[tuple[int, int, str, Program, PBMToken]] = []
     for p in candidate_programs:
         if not (p.start_at <= now <= p.end_at):
             continue
@@ -144,9 +145,15 @@ def spend(
         res = eligibility_check(citizen, p)
         if not res.ok:
             continue
-        chosen_program = p
-        chosen_token = token
-        break  # MVP: 最初にマッチしたプログラムを適用 (本番は最も住民有利なものを選ぶ)
+        possible_subsidy = _calc_subsidy(total, p, token)
+        candidates.append((possible_subsidy, token.remaining_jpy, p.id, p, token))
+
+    chosen_program: Program | None = None
+    chosen_token: PBMToken | None = None
+    if candidates:
+        # subsidy 降順 → remaining 降順 → id 昇順 (id は安定 tie-break)
+        candidates.sort(key=lambda x: (-x[0], -x[1], x[2]))
+        _, _, _, chosen_program, chosen_token = candidates[0]
 
     subsidy = 0
     if chosen_program and chosen_token:
