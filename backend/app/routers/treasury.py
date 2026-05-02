@@ -166,6 +166,20 @@ def migrations_status() -> dict[str, object]:
     return _migration_status(_engine)
 
 
+@router.get("/roadmap")
+def roadmap() -> dict[str, object]:
+    """戦略会議 #1 ロードマップの進捗 (戦略会議 #7 採択 A)。"""
+    from app.services.roadmap import to_dict
+    return to_dict()
+
+
+@router.get("/hsm/status")
+def hsm_status() -> dict[str, object]:
+    """HSM 連携状態 (戦略会議 #7 採択 B)。秘密鍵は決して出さない。"""
+    from app.services.hsm_adapter import status as _status
+    return _status()
+
+
 @router.post("/peg/unfreeze")
 def unfreeze(payload: PegFreezeIn) -> dict[str, str]:
     monitor = peg_monitor.get_monitor()

@@ -63,6 +63,19 @@
 </section>
 
 <section>
+  <h2>ロードマップ進捗 (戦略会議 #1 / 18 ヶ月計画)</h2>
+  <p class="note" style="margin-top:-6px">
+    戦略会議 #7 採択 A。Phase 1 (フラッグシップ) → Phase 2 (拡張+CP-6) → Phase 3 (制度統合)
+    の 3 フェーズ全マイルストーンの現在状態を表示します。
+    凡例: <span class="badge">done</span> 完了 / <span class="badge navy">ready</span> 実装完了・本番投入待ち /
+    <span class="badge yellow">partial</span> 一部実装 / <span class="badge gray">blocked</span> 外部依存 /
+    <span class="badge red">pending</span> 未着手
+  </p>
+  <div id="roadmapSummary" class="row" style="gap:10px;flex-wrap:wrap"></div>
+  <div id="roadmapBoard" class="empty" style="margin-top:10px">読み込み中…</div>
+</section>
+
+<section>
   <h2>多年度予算ビュー (CFO / 政権交代耐性)</h2>
   <p class="note" style="margin-top:-6px">
     戦略会議 #4 採択 #11 + 戦略会議 #5 採択 B。<code>fiscal_year_budgets</code> を
@@ -850,6 +863,55 @@ async function refreshFyView() {
 }
 document.getElementById('fyRefreshBtn')?.addEventListener('click', refreshFyView);
 
+// ----------------------------- ロードマップ進捗 -----------------------------
+const STATUS_BADGE = {
+  done:    { cls: 'badge',         label: 'done' },
+  ready:   { cls: 'badge navy',    label: 'ready' },
+  partial: { cls: 'badge yellow',  label: 'partial' },
+  blocked: { cls: 'badge gray',    label: 'blocked' },
+  pending: { cls: 'badge red',     label: 'pending' },
+};
+async function refreshRoadmap() {
+  const summary = document.getElementById('roadmapSummary');
+  const board = document.getElementById('roadmapBoard');
+  if (!summary || !board) return;
+  summary.innerHTML = '';
+  board.innerHTML = '';
+  try {
+    const r = await api('/treasury/roadmap');
+    for (const [status, count] of Object.entries(r.summary || {})) {
+      const meta = STATUS_BADGE[status] || { cls: 'badge gray', label: status };
+      summary.appendChild(el('span', { class: meta.cls }, `${meta.label}: ${count}`));
+    }
+    board.className = '';
+    for (const ph of r.phases || []) {
+      const phaseDiv = el('details', { open: ph.phase !== 3, style: 'margin-top:10px;border:1px solid #eee;padding:8px;border-radius:6px' });
+      phaseDiv.appendChild(el('summary', { style: 'font-weight:600' },
+        `Phase ${ph.phase} (${ph.milestones.length} milestones)`));
+      const tbl = el('table', {},
+        el('thead', {}, el('tr', {},
+          el('th', {}, 'M'), el('th', {}, 'タイトル'),
+          el('th', {}, 'status'), el('th', {}, 'notes'))),
+        el('tbody', {}));
+      for (const m of ph.milestones) {
+        const meta = STATUS_BADGE[m.status] || { cls: 'badge gray', label: m.status };
+        const noteCell = m.blocking_reason
+          ? `${m.notes || ''} (blocked: ${m.blocking_reason})` : (m.notes || '');
+        tbl.querySelector('tbody').appendChild(el('tr', {},
+          el('td', {}, el('code', {}, m.code)),
+          el('td', {}, m.title),
+          el('td', {}, el('span', { class: meta.cls }, meta.label)),
+          el('td', { style: 'font-size:11px' }, noteCell)));
+      }
+      phaseDiv.appendChild(tbl);
+      board.appendChild(phaseDiv);
+    }
+  } catch (e) {
+    board.className = 'empty';
+    board.textContent = 'ロードマップ取得失敗: ' + e.message;
+  }
+}
+
 function refreshAll() {
   refreshTreasury();
   refreshPrograms();
@@ -858,6 +920,7 @@ function refreshAll() {
   refreshOfflineStores();
   refreshCpViolations();
   refreshFyProgramSelect();
+  refreshRoadmap();
 }
 refreshAll();
 loadCatalog();
