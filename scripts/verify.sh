@@ -86,11 +86,11 @@ for _ in range(40):
     if curl -sf http://127.0.0.1:8766/api > /dev/null 2>&1; then break; fi
     sleep 0.4
   done
-  # 戦略会議 #5 採択 E: 100 並列 × 50 反復 = 5,000 req のスケールアップ。
+  # 戦略会議 #7 採択 E: 50 並列 × 200 反復 = 10,000 req に拡大 (Round 5/6 の倍)。
   # SQLite WAL モード + busy_timeout=10s でハードウェア限界に挑戦。
   # 本番 (PostgreSQL) は失敗率 0% が目標、SQLite 環境は 5% 許容。
   python scripts/loadtest.py --base http://127.0.0.1:8766 \
-    --concurrency 100 --iters 50 --max-fail-rate 0.05 \
+    --concurrency 50 --iters 200 --max-fail-rate 0.05 \
     | sed 's/^/    /' || { kill $LSPID2 2>/dev/null; rm -f /tmp/loadtest.db /tmp/loadtest.db-wal /tmp/loadtest.db-shm; fail "load NG"; }
   kill $LSPID $LSPID2 2>/dev/null
   wait 2>/dev/null

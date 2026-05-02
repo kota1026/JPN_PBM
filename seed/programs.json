@@ -1,5 +1,31 @@
 [
   {
+    "id": "prog-koto-disaster-pack-2026",
+    "name": "江東区 防災備蓄ローリング助成 2026 (Phase 2 M+7)",
+    "description": "戦略会議 #4 (Round 5) で予告、戦略会議 #7 (Round 8) で実シード化。江東区の全世帯 (年齢無制限) に対し、保存水・非常食・防災用品の購入額の 50% を助成 (上限 1 万円)。フラッグシップ prog-koto-kosodate-2026 と同じ加盟店ネットワーク (store-aeon-koto) で動かし、対象カテゴリは disaster.* のみ。CP-6 オフラインフォールバック必須。多年度: 2026 → 2027 → 2028 で 5,000 万円ずつ。",
+    "budget_jpy": 150000000,
+    "subsidy_bps": 5000,
+    "per_citizen_cap_jpy": 10000,
+    "start_at": "2026-04-01T00:00:00",
+    "end_at":   "2028-12-31T23:59:59",
+    "eligibility": {
+      "wards": ["江東区"]
+    },
+    "eligible_categories": [
+      "disaster.water",
+      "disaster.food",
+      "disaster.gear"
+    ],
+    "eligible_jans": [],
+    "excluded_jans": [],
+    "approved_stores": ["store-aeon-koto"],
+    "fiscal_year_budgets": {
+      "2026": 50000000,
+      "2027": 50000000,
+      "2028": 50000000
+    }
+  },
+  {
     "id": "prog-koto-kosodate-2026",
     "name": "江東区 こども・くらし応援 PBM 2026 (フラッグシップ)",
     "description": "戦略会議 #1 採択フラッグシップ。江東区の 0–18 歳子育て世帯 1,000 世帯 × 加盟店 30 店舗で実施する DBS-OGP 型 CDC バウチャー東京移植版。月 5,000 円相当の食品・日用品+防災備蓄 PBM (018サポートの一部置換)。Phase 1 (M+5) で 1,000 世帯到達、Phase 2 で 5万→20万世帯へ拡張。CP-6 オフラインフォールバック必須。",
