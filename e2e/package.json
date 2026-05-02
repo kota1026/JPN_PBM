@@ -1,0 +1,14 @@
+{
+  "name": "jpn-pbm-e2e",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Playwright E2E for JPN-PBM (戦略会議 #3 採択 #2)",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0"
+  }
+}

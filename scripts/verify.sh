@@ -40,6 +40,12 @@ run_sol_check() {
   ok "sol"
 }
 
+run_front_js_check() {
+  step "front" "frontend/*.html の inline JS 構文チェック"
+  python scripts/check_frontend_js.py || fail "frontend JS 構文 NG"
+  ok "front"
+}
+
 run_offline_fallback_e2e() {
   step "cp6" "CP-6 オフラインフォールバック スモークテスト"
   ( cd backend && python -m pytest -q tests/test_offline_fallback.py ) \
@@ -47,13 +53,36 @@ run_offline_fallback_e2e() {
   ok "cp6"
 }
 
+run_sweep_dryrun() {
+  step "sweep" "期限切れ PBM の dry-run sweep"
+  python scripts/cron_sweep.py 2>&1 | sed 's/^/    /' || fail "sweep NG"
+  ok "sweep"
+}
+
+run_e2e() {
+  step "e2e" "Playwright E2E (tokyo→citizen→retailer 通し)"
+  if ! command -v playwright >/dev/null 2>&1; then
+    printf "  \033[1;33m⊝\033[0m Playwright 未インストール — skip\n"
+    return 0
+  fi
+  if [ ! -d "$HOME/.cache/ms-playwright" ] && [ ! -x "$(command -v chromium)" ] && [ ! -x "$(command -v google-chrome)" ]; then
+    printf "  \033[1;33m⊝\033[0m ブラウザ未インストール — skip (実環境で 'cd e2e && npm i && npx playwright install chromium' 後に再実行)\n"
+    return 0
+  fi
+  ( cd e2e && npx playwright test --reporter=list ) || fail "E2E NG"
+  ok "e2e"
+}
+
 case "$MODE" in
   py)    run_pytest ;;
   seed)  run_seed_check ;;
   sol)   run_sol_check ;;
   cp6)   run_offline_fallback_e2e ;;
+  sweep) run_sweep_dryrun ;;
+  e2e)   run_e2e ;;
+  front) run_front_js_check ;;
   quick) run_pytest; run_seed_check ;;
-  all|*) run_pytest; run_seed_check; run_sol_check ;;
+  all|*) run_pytest; run_seed_check; run_sol_check; run_front_js_check ;;
 esac
 
 printf "\n\033[1;32m✓ verify(%s) all green\033[0m\n" "$MODE"

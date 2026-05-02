@@ -69,7 +69,32 @@
 </section>
 
 <section>
-  <h2>④ ウォレット残高</h2>
+  <h2>④ 災害時オフライン QR を事前取得 (CP-6)</h2>
+  <p class="note" style="margin-top:-6px">
+    首都直下地震など RPC 全断時のフェイルセーフ。<b>平時に</b>このボタンで月次 QR を取得・印刷しておけば、
+    通信が止まった環境でも加盟店 POS が QR をスキャンしてその場で給付できます。
+    QR 内には <code>(programId, pid, monthIndex, capJpy, expiresAt) + 都の署名</code> が含まれます。
+  </p>
+  <div class="row" style="gap:12px;flex-wrap:wrap;align-items:flex-end">
+    <label style="flex:1;min-width:240px">プログラム
+      <select id="cp6ProgramSel"></select>
+    </label>
+    <label style="flex:0 0 110px">月 (YYYYMM)
+      <input id="cp6Month" type="number" placeholder="202604">
+    </label>
+    <label style="flex:0 0 130px">月 cap (JPY)
+      <input id="cp6Cap" type="number" min="1" value="5000">
+    </label>
+    <label style="flex:0 0 130px">有効日数
+      <input id="cp6Days" type="number" min="1" value="30">
+    </label>
+    <button type="button" id="cp6IssueBtn">災害用 QR を発行</button>
+  </div>
+  <div id="cp6Result" class="empty" style="margin-top:8px">未発行</div>
+</section>
+
+<section>
+  <h2>⑤ ウォレット残高</h2>
   <div id="walletKpi" class="kpi-grid">
     <div class="kpi"><div class="label">通常 JPYC 残高</div><div class="value">-</div></div>
     <div class="kpi navy"><div class="label">保有 PBM トークン</div><div class="value">-</div></div>
@@ -217,7 +242,57 @@ async function refreshAll() {
     }
     pbmRoot.appendChild(tbl);
   }
+
+  // CP-6: 受給可能 program リストを cp6 セレクタにも反映
+  const cp6Sel = document.getElementById('cp6ProgramSel');
+  if (cp6Sel) {
+    cp6Sel.innerHTML = '';
+    for (const p of eligible) cp6Sel.appendChild(el('option', { value: p.id }, p.name));
+  }
 }
+
+// 月インデックスのデフォルト = 当月
+(function () {
+  const m = document.getElementById('cp6Month');
+  if (m && !m.value) {
+    const d = new Date();
+    m.value = d.getFullYear() * 100 + (d.getMonth() + 1);
+  }
+})();
+
+document.getElementById('cp6IssueBtn')?.addEventListener('click', async () => {
+  const out = document.getElementById('cp6Result');
+  out.innerHTML = '';
+  out.className = '';
+  if (!pid) { out.appendChild(el('div', { class: 'error' }, '先に認証してください')); return; }
+  const programId = document.getElementById('cp6ProgramSel').value;
+  const monthIndex = Number(document.getElementById('cp6Month').value);
+  const capJpy = Number(document.getElementById('cp6Cap').value);
+  const days = Number(document.getElementById('cp6Days').value);
+  const expiresAt = Math.floor(Date.now() / 1000) + days * 86400;
+  try {
+    const r = await api('/offline/coupons', { method: 'POST', body: JSON.stringify({
+      program_id: programId, pid, month_index: monthIndex,
+      cap_jpy: capJpy, expires_at: expiresAt,
+    })});
+    const qrJson = JSON.stringify(r);
+    const card = el('div', { class: 'qr-card' });
+    const target = el('div');
+    card.appendChild(target);
+    card.appendChild(el('div', { class: 'qr-label' }, '災害時用 QR (POS が読み取り可能)'));
+    card.appendChild(el('div', { class: 'note', style: 'word-break:break-all; max-width:280px; text-align:center; font-size:11px' },
+      `${programId} / month ${monthIndex} / cap ${fmtJpy(capJpy)}`));
+    out.appendChild(card);
+    await window.__drawQR(target, qrJson, { width: 240, errorLevel: 'M' });
+    // ダウンロード用に payload も表示
+    const det = el('details', { style: 'margin-top:10px' },
+      el('summary', {}, 'QR の中身 (JSON / 印刷時に併記推奨)'),
+      el('pre', { style: 'font-size:10px; white-space:pre-wrap; word-break:break-all' }, qrJson));
+    out.appendChild(det);
+  } catch (e) {
+    out.appendChild(el('div', { class: 'error' }, '発行失敗: ' + e.message));
+  }
+});
 </script>
 </body>
 </html>
