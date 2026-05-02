@@ -36,6 +36,7 @@ class Base(DeclarativeBase):
 _PENDING_COLUMNS: list[tuple[str, str, str, str]] = [
     ("programs", "eligible_categories", "JSON", "'[]'"),
     ("programs", "excluded_jans",       "JSON", "'[]'"),
+    ("programs", "fiscal_year_budgets", "JSON", "'{}'"),
 ]
 
 

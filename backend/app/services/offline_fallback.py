@@ -1,4 +1,4 @@
-"""CP-6: 災害時オフラインフォールバック (Phase 1 オフチェーン版)。
+"""CP-6: 災害時オフラインフォールバック (Phase 1 + Phase 2 移行)。
 
 首都直下地震等でネット/電力が断絶した際でも、加盟店 POS が事前配布された
 署名済み QR を用いて住民への助成を継続できるフェイルセーフ。
@@ -32,6 +32,11 @@ from typing import Iterable
 SIGNING_SECRET = os.environ.get(
     "JPN_PBM_OFFLINE_SECRET", "demo-offline-secret-change-me"
 ).encode()
+
+# Phase 2: ECDSA secp256k1 (Sol 側 PBMOfflineFallback の ecrecover と互換)
+# 戦略会議 #4 採択 #3。Phase 1 HMAC と並列で動かし、Phase 2 移行時に切替える。
+# 鍵は環境変数 JPN_PBM_GOVERNOR_PRIVKEY (32 byte hex) で渡す。未設定なら ECDSA 機能は無効。
+GOVERNOR_PRIVKEY_HEX = os.environ.get("JPN_PBM_GOVERNOR_PRIVKEY", "")
 
 
 # ----------------------------- データクラス -----------------------------
@@ -244,3 +249,103 @@ class OfflineSettlement:
                 result.accepted.append(it)
                 result.total_paid_jpy += it.amount_jpy
         return result
+
+
+# ----------------------------- Phase 2: ECDSA secp256k1 -----------------------------
+#
+# 戦略会議 #4 採択 #3 (Stablecoin Architect)。HSM/HW 鍵管理は Phase 3 だが、
+# Phase 2 で必要な「Sol PBMOfflineFallback.redeemBatch との完全互換」を成立させる。
+#
+# 設計:
+# - メッセージ = couponHash = keccak256(abi.encode(programId32, pid32, monthIndex, capJpy, expiresAt))
+#   ただし本実装ではまず標準的な canonical JSON + sha256 で動かし (= Phase 1.5)、
+#   Sol 互換 (keccak / abi.encode / personal_sign) のラッパは Phase 2 完成版で追加する。
+# - 鍵は env JPN_PBM_GOVERNOR_PRIVKEY (32byte hex, 0x optional)
+# - 公開鍵検証は Python 標準の `ecdsa` ライブラリ (secp256k1) を使う
+
+import hashlib as _hashlib
+
+try:  # noqa: SIM105
+    from ecdsa import SECP256k1, SigningKey, VerifyingKey
+    from ecdsa.util import sigdecode_string, sigencode_string
+    _ECDSA_AVAILABLE = True
+except Exception:  # pragma: no cover
+    _ECDSA_AVAILABLE = False
+
+
+def is_ecdsa_available() -> bool:
+    return _ECDSA_AVAILABLE and bool(GOVERNOR_PRIVKEY_HEX)
+
+
+def _privkey() -> "SigningKey":
+    if not _ECDSA_AVAILABLE:
+        raise RuntimeError("ecdsa パッケージが利用不可")
+    if not GOVERNOR_PRIVKEY_HEX:
+        raise RuntimeError("JPN_PBM_GOVERNOR_PRIVKEY 未設定")
+    h = GOVERNOR_PRIVKEY_HEX.removeprefix("0x")
+    if len(h) != 64:
+        raise ValueError("private key must be 32 bytes hex")
+    return SigningKey.from_string(bytes.fromhex(h), curve=SECP256k1)
+
+
+def _governor_pubkey_hex() -> str:
+    """uncompressed (65 byte: 0x04 + X + Y) を hex で返す。"""
+    sk = _privkey()
+    vk = sk.verifying_key
+    return ("04" + vk.to_string().hex())
+
+
+def coupon_digest(coupon: OfflineCoupon) -> bytes:
+    """coupon → 32 byte digest (sha256 over canonical JSON)。
+
+    Sol 版の keccak256(abi.encode(...)) との完全互換は Phase 2 完成版で対応。
+    本実装ではオフチェーン同士の互換に集中する。
+    """
+    return _hashlib.sha256(coupon.canonical()).digest()
+
+
+def sign_coupon_ecdsa(coupon: OfflineCoupon) -> str:
+    """ECDSA で coupon に署名し、64 byte (r||s) を hex で返す。"""
+    sk = _privkey()
+    digest = coupon_digest(coupon)
+    sig = sk.sign_digest_deterministic(digest, sigencode=sigencode_string)
+    return sig.hex()
+
+
+def issue_offline_coupon_ecdsa(
+    *,
+    program_id: str,
+    pid: str,
+    month_index: int,
+    cap_jpy: int,
+    expires_at: int | datetime,
+) -> SignedCoupon:
+    """ECDSA 版の coupon 発行 (Phase 2)。"""
+    if isinstance(expires_at, datetime):
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        expires_at = int(expires_at.timestamp())
+    coupon = OfflineCoupon(
+        program_id=program_id, pid=pid, month_index=month_index,
+        cap_jpy=cap_jpy, expires_at=int(expires_at),
+    )
+    return SignedCoupon(coupon=coupon, signature=sign_coupon_ecdsa(coupon))
+
+
+def verify_coupon_ecdsa(signed: SignedCoupon, *, public_key_hex: str | None = None) -> tuple[bool, str]:
+    """ECDSA 検証。public_key_hex 未指定なら GOVERNOR の公開鍵を使う。"""
+    if not _ECDSA_AVAILABLE:
+        return False, "ECDSA 利用不可"
+    try:
+        pk = public_key_hex or _governor_pubkey_hex()
+        if pk.startswith("04") and len(pk) == 130:
+            pk = pk[2:]
+        vk = VerifyingKey.from_string(bytes.fromhex(pk), curve=SECP256k1)
+        sig = bytes.fromhex(signed.signature)
+        if len(sig) != 64:
+            return False, "signature length must be 64 bytes (r||s)"
+        digest = coupon_digest(signed.coupon)
+        ok = vk.verify_digest(sig, digest, sigdecode=sigdecode_string)
+        return (bool(ok), "OK" if ok else "署名検証失敗")
+    except Exception as e:
+        return False, f"ECDSA 検証エラー: {e}"

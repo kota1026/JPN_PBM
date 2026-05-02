@@ -17,6 +17,13 @@ from app.models.pbm import PBMToken
 from app.models.program import Program
 from app.services import jpyc
 from app.services.eligibility import check as eligibility_check
+from app.services.fiscal_budget import (
+    budget_for_year,
+    fiscal_year_of,
+    remaining_for_year,
+    total_multi_year_budget,
+    validate_fiscal_year_budgets,
+)
 from app.services.pbm import issue as issue_pbm, revoke_program
 
 
@@ -46,6 +53,8 @@ class ProgramIn(BaseModel):
     eligible_categories: list[str] = []
     excluded_jans: list[str] = []
     approved_stores: list[str] = []
+    # 多年度予算 (戦略会議 #4 採択 #11)。空 dict なら budget_jpy を当年度予算扱い
+    fiscal_year_budgets: dict[str, int] = {}
 
 
 class ProgramOut(ProgramIn):
@@ -62,6 +71,20 @@ def create_program(payload: ProgramIn, db: Session = Depends(_db)) -> ProgramOut
         raise HTTPException(400, "subsidy_bps must be in (0, 10000]")
     if payload.budget_jpy <= 0:
         raise HTTPException(400, "budget_jpy must be positive")
+
+    fyb_ok, fyb_why = validate_fiscal_year_budgets(
+        fiscal_year_budgets=payload.fiscal_year_budgets,
+        fallback_budget_jpy=payload.budget_jpy,
+    )
+    if not fyb_ok:
+        raise HTTPException(400, f"fiscal_year_budgets: {fyb_why}")
+    if payload.fiscal_year_budgets:
+        total_fyb = sum(int(v) for v in payload.fiscal_year_budgets.values())
+        if total_fyb != payload.budget_jpy:
+            raise HTTPException(
+                400,
+                f"sum(fiscal_year_budgets)={total_fyb} != budget_jpy={payload.budget_jpy}",
+            )
 
     pid = payload.id or f"prog-{uuid.uuid4().hex[:8]}"
     if db.get(Program, pid):
@@ -89,6 +112,7 @@ def create_program(payload: ProgramIn, db: Session = Depends(_db)) -> ProgramOut
         eligible_categories=payload.eligible_categories,
         excluded_jans=payload.excluded_jans,
         approved_stores=payload.approved_stores,
+        fiscal_year_budgets=payload.fiscal_year_budgets or {},
     )
     db.add(p)
     db.flush()
@@ -116,6 +140,25 @@ def delete_program(program_id: str, db: Session = Depends(_db)):
         raise HTTPException(404, "program not found")
     refund = revoke_program(db, p)
     return {"ok": True, "refund_jpy": refund}
+
+
+@router.get("/{program_id}/fiscal-budget")
+def get_fiscal_budget(program_id: str, year: str | None = None, db: Session = Depends(_db)):
+    """多年度予算の状況 (戦略会議 #4 採択 #11)。"""
+    p = db.get(Program, program_id)
+    if p is None:
+        raise HTTPException(404, "program not found")
+    fy = year or fiscal_year_of()
+    return {
+        "program_id": program_id,
+        "fiscal_year": fy,
+        "fiscal_year_budgets": p.fiscal_year_budgets or {},
+        "current_year_budget_jpy": budget_for_year(p, fy),
+        "current_year_remaining_jpy": remaining_for_year(p, fy),
+        "total_multi_year_budget_jpy": total_multi_year_budget(p),
+        "spent_jpy": p.spent_jpy,
+        "is_multi_year": bool(p.fiscal_year_budgets),
+    }
 
 
 @router.get("/eligible/{pid}", response_model=list[ProgramOut])
@@ -182,5 +225,6 @@ def _to_out(p: Program) -> ProgramOut:
         eligible_categories=p.eligible_categories or [],
         excluded_jans=p.excluded_jans or [],
         approved_stores=p.approved_stores or [],
+        fiscal_year_budgets=p.fiscal_year_budgets or {},
         revoked=p.revoked,
     )
