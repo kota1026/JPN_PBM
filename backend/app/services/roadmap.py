@@ -1,8 +1,8 @@
-"""ロードマップ進捗 (戦略会議 #7 採択 A)。
+"""ロードマップ進捗 (戦略会議 #7 採択 A + 戦略会議 #10 採択 A4)。
 
 戦略会議 #1 で確定した 18 ヶ月ロードマップ (Phase 1-3) の現在状態を返す。
 status は手動メンテだが、達成判定の一部 (テスト数, programs 数, contracts 数,
-docs 英訳 N 本) は実コードから自動取得する。
+docs 英訳 N 本) は実コードから自動取得する (#10 で `auto_metrics()` を追加)。
 
 【ステータス】
 - done   : 実装/外交/承認 完了
@@ -13,6 +13,8 @@ docs 英訳 N 本) は実コードから自動取得する。
 
 【自動判定】
 - evidence_files が全部存在すれば status を "done" or "ready" に格上げできる
+- `auto_metrics()` が repo 内の実カウント (tests / contracts / strategy 文書数 等) を
+  サマリで返す。フロントの roadmap dashboard が evidence と並べて表示する。
 """
 
 from __future__ import annotations
@@ -94,8 +96,11 @@ MILESTONES: list[Milestone] = [
               notes="既 repo + LICENSE",
               evidence_files=["LICENSE"]),
     Milestone(2, "M+10", "PBM ラッパー authentication audit",
-              "partial",
-              notes="Sol コントラクトあり。外部 audit (Quantstamp 等) 未"),
+              "ready",
+              notes="セルフ audit checklist 24 項目 ok=39/warn=5/fail=0 (R11)。外部 audit (Quantstamp 等) は本番前",
+              evidence_files=["scripts/contract_audit.py",
+                              "contracts/PBM.sol",
+                              "contracts/PBMOfflineFallback.sol"]),
     Milestone(2, "M+11", "★ 災害時フォールバック (CP-6) 本番投入",
               "ready",
               notes="ECDSA Sol 完全互換 (R5/R6) + 鍵 rotation (R7) + Sol simulator (R7)",
@@ -117,10 +122,18 @@ MILESTONES: list[Milestone] = [
     Milestone(3, "M+16", "他自治体 fork (大阪府 / 愛知県)",
               "pending"),
     Milestone(3, "M+18", "「東京都モデル」公開ホワイトペーパー",
-              "partial",
-              notes="戦略会議 #1, #2 英訳済 (2/5)",
-              evidence_files=["docs/strategy-2026-04-en.md",
-                              "docs/strategy-2026-05-round2-en.md"]),
+              "ready",
+              notes="戦略会議 #1〜#9 全英訳済 (9/9) + 統合 whitepaper-2026.md (R11)",
+              evidence_files=["docs/whitepaper-2026.md",
+                              "docs/strategy-2026-04-en.md",
+                              "docs/strategy-2026-05-round2-en.md",
+                              "docs/strategy-2026-05-round3-en.md",
+                              "docs/strategy-2026-05-round4-en.md",
+                              "docs/strategy-2026-05-round5-en.md",
+                              "docs/strategy-2026-05-round6-en.md",
+                              "docs/strategy-2026-05-round7-en.md",
+                              "docs/strategy-2026-05-round8-en.md",
+                              "docs/strategy-2026-05-round9-en.md"]),
 ]
 
 
@@ -141,10 +154,72 @@ def status_summary() -> dict[str, int]:
     return out
 
 
+def auto_metrics() -> dict[str, int]:
+    """repo の実コードから取れる進捗指標を返す (戦略会議 #10 採択 A4)。
+
+    手動の status とは独立に、客観的な数値だけを集計する。
+    フロントの roadmap dashboard が evidence と並べて「自動進捗」を表示するのに使う。
+    """
+    metrics: dict[str, int] = {}
+
+    def _count(rel: str, glob: str) -> int:
+        d = ROOT / rel
+        return len(list(d.glob(glob))) if d.is_dir() else 0
+
+    metrics["tests"] = _count("backend/tests", "test_*.py")
+    metrics["routers"] = _count("backend/app/routers", "*.py") - 1  # __init__ 除外
+    metrics["services"] = _count("backend/app/services", "*.py") - 1
+    metrics["contracts"] = _count("contracts", "*.sol")
+    metrics["seed_programs"] = 0
+    seed_p = ROOT / "seed" / "programs.json"
+    if seed_p.exists():
+        import json as _json
+        try:
+            data = _json.loads(seed_p.read_text(encoding="utf-8"))
+            metrics["seed_programs"] = len(data) if isinstance(data, list) else 0
+        except Exception:  # noqa: BLE001
+            pass
+
+    # 戦略文書の英訳カバレッジ
+    docs_dir = ROOT / "docs"
+    if docs_dir.is_dir():
+        ja = [
+            p for p in docs_dir.glob("strategy-*.md")
+            if not p.stem.endswith("-en")
+        ]
+        en = [p for p in docs_dir.glob("strategy-*-en.md")]
+        metrics["strategy_docs_ja"] = len(ja)
+        metrics["strategy_docs_en"] = len(en)
+    else:
+        metrics["strategy_docs_ja"] = 0
+        metrics["strategy_docs_en"] = 0
+
+    # ハーネス verify モード数
+    verify_sh = ROOT / "scripts" / "verify.sh"
+    if verify_sh.exists():
+        body = verify_sh.read_text(encoding="utf-8")
+        # case 文の各 mode (py/seed/sol/...) をカウント
+        import re as _re
+        modes = _re.findall(r"^\s*([a-z][a-z0-9]+)\)\s+run_", body, flags=_re.M)
+        metrics["verify_modes"] = len(set(modes))
+    else:
+        metrics["verify_modes"] = 0
+
+    # コントラクト audit 行数 (= checklist 数の proxy)
+    audit_py = ROOT / "scripts" / "contract_audit.py"
+    metrics["audit_checks"] = (
+        audit_py.read_text(encoding="utf-8").count("def check_")
+        if audit_py.exists() else 0
+    )
+
+    return metrics
+
+
 def to_dict() -> dict[str, object]:
     """API 出力用 dict。"""
     return {
         "summary": status_summary(),
+        "auto_metrics": auto_metrics(),
         "phases": [
             {
                 "phase": phase,

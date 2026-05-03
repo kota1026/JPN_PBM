@@ -26,7 +26,7 @@ def main() -> int:
     if not shutil.which("node"):
         print("front-js: node 未インストール — skip")
         return 0
-    files = sorted(FRONT.glob("*.html"))
+    files = sorted(FRONT.rglob("*.html"))
     fails: list[str] = []
     for f in files:
         text = f.read_text(encoding="utf-8")

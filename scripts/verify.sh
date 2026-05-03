@@ -3,11 +3,17 @@
 # Claude Code 開発チームの内部実践 (小さく変更→即検証→次へ) を本リポに移植。
 #
 # 使い方:
-#   bash scripts/verify.sh            # 全部
+#   bash scripts/verify.sh            # 全部 (pytest + seed + sol + front + audit + i18n)
 #   bash scripts/verify.sh quick      # pytest + JSON のみ
 #   bash scripts/verify.sh py         # pytest のみ
 #   bash scripts/verify.sh seed       # seed JSON 妥当性のみ
 #   bash scripts/verify.sh sol        # Solidity 軽量構文チェックのみ
+#   bash scripts/verify.sh audit      # コントラクト セルフ audit (24 checklist) のみ
+#   bash scripts/verify.sh i18n       # 戦略文書英訳カバレッジ のみ
+#   bash scripts/verify.sh ready      # 本番投入 readiness 診断のみ
+#   bash scripts/verify.sh sweep      # 期限切れ PBM dry-run のみ
+#   bash scripts/verify.sh load       # 100 並列 × 100 反復スモーク負荷
+#   bash scripts/verify.sh e2e        # Playwright E2E (要 chromium)
 #
 # 失敗時は最初に落ちたチェックの所で exit 1 して、原因を即可視化する。
 
@@ -57,6 +63,18 @@ run_readiness() {
   step "ready" "本番投入 readiness 自動診断"
   python scripts/readiness_check.py 2>&1 | sed 's/^/    /' || fail "readiness NG"
   ok "ready"
+}
+
+run_audit() {
+  step "audit" "Solidity コントラクト セルフ audit (24 checklist × 2 contracts)"
+  python scripts/contract_audit.py 2>&1 | sed 's/^/    /' || fail "audit NG"
+  ok "audit"
+}
+
+run_i18n() {
+  step "i18n" "戦略文書 英訳カバレッジ"
+  python scripts/check_i18n.py 2>&1 | sed 's/^/    /' || fail "i18n NG"
+  ok "i18n"
 }
 
 run_sweep_dryrun() {
@@ -125,11 +143,13 @@ case "$MODE" in
   cp6)   run_offline_fallback_e2e ;;
   sweep) run_sweep_dryrun ;;
   ready) run_readiness ;;
+  audit) run_audit ;;
+  i18n)  run_i18n ;;
   e2e)   run_e2e ;;
   front) run_front_js_check ;;
   load)  run_load ;;
   quick) run_pytest; run_seed_check ;;
-  all|*) run_pytest; run_seed_check; run_sol_check; run_front_js_check ;;
+  all|*) run_pytest; run_seed_check; run_sol_check; run_front_js_check; run_audit; run_i18n ;;
 esac
 
 printf "\n\033[1;32m✓ verify(%s) all green\033[0m\n" "$MODE"
