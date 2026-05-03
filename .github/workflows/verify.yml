@@ -1,0 +1,61 @@
+name: verify
+# 戦略会議 #9 採択 C: 全 PR / push で `bash scripts/verify.sh all` を回す。
+# - main / claude/* ブランチへの push をトリガー
+# - PR の opened / synchronize もトリガー (Round 1-9 で書き溜めた 138-150 tests を守る)
+
+on:
+  push:
+    branches: [main, "claude/**"]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Set up Node.js (for inline JS syntax check)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Python dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Run scripts/verify.sh all
+        run: bash scripts/verify.sh all
+
+      - name: Run scripts/verify.sh sweep
+        run: bash scripts/verify.sh sweep
+
+      - name: Run scripts/verify.sh ready
+        run: bash scripts/verify.sh ready
+
+  load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies (incl. httpx)
+        run: pip install -r backend/requirements.txt
+
+      - name: Run load test
+        run: bash scripts/verify.sh load
