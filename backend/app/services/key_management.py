@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from datetime import date, datetime
 from typing import Iterable, Optional
 
 from app.services.sol_compat import (
@@ -38,6 +39,7 @@ from app.services.sol_compat import (
 
 
 DEFAULT_GRACE_DAYS = 90
+DEFAULT_KEY_MAX_AGE_DAYS = 365  # 戦略会議 #8 採択 C: 1 年でローテーション推奨
 
 
 @dataclass(frozen=True)
@@ -45,10 +47,23 @@ class GovKey:
     privkey_hex: str
     address: str
     is_active: bool
+    issued_at: date | None = None  # 鍵発行日 (戦略会議 #8 採択 C)
 
     @property
     def short(self) -> str:
         return self.address[:10] + "..." + self.address[-6:]
+
+    def age_days(self, *, today: date | None = None) -> int | None:
+        if self.issued_at is None:
+            return None
+        today = today or date.today()
+        return (today - self.issued_at).days
+
+    def is_overage(self, *, max_age_days: int = DEFAULT_KEY_MAX_AGE_DAYS, today: date | None = None) -> bool:
+        age = self.age_days(today=today)
+        if age is None:
+            return False  # 不明 → 警告対象外
+        return age > max_age_days
 
 
 def _read_keys_env() -> tuple[list[str], int, int]:
@@ -67,6 +82,24 @@ def _read_keys_env() -> tuple[list[str], int, int]:
     return keys, active_idx, grace_days
 
 
+def _read_issued_dates() -> list[date | None]:
+    """JPN_PBM_GOVERNOR_ISSUED_AT="2025-01-15,2024-06-01,..." を読む (戦略会議 #8 採択 C)。
+
+    JPN_PBM_GOVERNOR_PRIVKEYS と同じ並び・同じ要素数。空文字 OR 解釈失敗は None。
+    """
+    raw = os.environ.get("JPN_PBM_GOVERNOR_ISSUED_AT", "").strip()
+    if not raw:
+        return []
+    out: list[date | None] = []
+    for tok in raw.split(","):
+        tok = tok.strip()
+        try:
+            out.append(date.fromisoformat(tok) if tok else None)
+        except ValueError:
+            out.append(None)
+    return out
+
+
 def load_keys() -> list[GovKey]:
     """env から GovKey のリストを構築。"""
     raw, active_idx, _ = _read_keys_env()
@@ -74,13 +107,16 @@ def load_keys() -> list[GovKey]:
         return []
     if active_idx < 0 or active_idx >= len(raw):
         active_idx = 0
+    issued_dates = _read_issued_dates()
     out: list[GovKey] = []
     for i, hex_str in enumerate(raw):
         sk = privkey_from_hex(hex_str)
+        issued = issued_dates[i] if i < len(issued_dates) else None
         out.append(GovKey(
             privkey_hex=hex_str,
             address=address_of(sk),
             is_active=(i == active_idx),
+            issued_at=issued,
         ))
     return out
 
@@ -124,16 +160,38 @@ def verify_against_any_governor(
     return False, last_why or "no governor matched", None
 
 
-def rotation_status() -> dict[str, object]:
+def rotation_status(*, today: date | None = None) -> dict[str, object]:
     """SOC ダッシュボードに出す現在の鍵 rotation 状態。"""
     keys = load_keys()
     _, active_idx, grace_days = _read_keys_env()
+    max_age = int(os.environ.get("JPN_PBM_KEY_MAX_AGE_DAYS", str(DEFAULT_KEY_MAX_AGE_DAYS)))
+    today = today or date.today()
+    addresses: list[dict[str, object]] = []
+    overage_count = 0
+    for i, k in enumerate(keys):
+        age = k.age_days(today=today)
+        is_over = k.is_overage(max_age_days=max_age, today=today)
+        if is_over:
+            overage_count += 1
+        addresses.append({
+            "index": i,
+            "address": k.address,
+            "is_active": k.is_active,
+            "issued_at": k.issued_at.isoformat() if k.issued_at else None,
+            "age_days": age,
+            "is_overage": is_over,
+        })
+    alerts: list[str] = []
+    if overage_count > 0:
+        alerts.append(
+            f"WARNING: {overage_count} key(s) older than {max_age} days. "
+            f"Recommend rotation."
+        )
     return {
         "configured_keys": len(keys),
         "active_index": active_idx,
         "grace_days": grace_days,
-        "addresses": [
-            {"index": i, "address": k.address, "is_active": k.is_active}
-            for i, k in enumerate(keys)
-        ],
+        "max_age_days": max_age,
+        "alerts": alerts,
+        "addresses": addresses,
     }
