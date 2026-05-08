@@ -81,8 +81,6 @@ contract PBM {
         require(endAt > startAt, "PBM: bad period");
         require(subsidyBps <= 10_000, "PBM: bad bps");
 
-        require(jpyc.transferFrom(msg.sender, address(this), budget), "PBM: deposit fail");
-
         programs[id] = Program({
             id: id,
             issuer: msg.sender,
@@ -94,6 +92,8 @@ contract PBM {
             perCitizenCap: perCitizenCap,
             revoked: false
         });
+
+        require(jpyc.transferFrom(msg.sender, address(this), budget), "PBM: deposit fail");
 
         emit ProgramCreated(id, budget, startAt, endAt);
     }

@@ -1,0 +1,38 @@
+# Foundry config (戦略会議 #11 採択 ─ Polygon Mumbai testnet 実デプロイ準備)
+#
+# 使い方:
+#   curl -L https://foundry.paradigm.xyz | bash && foundryup
+#   forge build       # contracts/ をコンパイル
+#   bash scripts/deploy_mumbai.sh   # Mumbai testnet にデプロイ
+#
+# 環境変数 (deploy_mumbai.sh が読む):
+#   POLYGON_MUMBAI_RPC_URL   ─ alchemy/infura で取得 (https://www.alchemy.com/)
+#   GOVERNOR_PRIVKEY         ─ 32 byte hex (0x prefix 不要), faucet 受領済 testnet wallet
+#   JPYC_TESTNET_ADDRESS     ─ Mumbai 上の test JPYC ERC20 アドレス (0x...)
+
+[profile.default]
+src        = "contracts"
+out        = "out"
+libs       = ["lib"]
+script     = "scripts/forge"
+test       = "scripts/forge/tests"
+solc       = "0.8.20"
+optimizer  = true
+optimizer_runs = 200
+via_ir     = false
+
+# CI 用: gas snapshot を記録 (デプロイコスト目安)
+gas_reports = ["PBM", "PBMOfflineFallback"]
+
+[fmt]
+line_length = 100
+tab_width   = 4
+bracket_spacing = false
+
+[rpc_endpoints]
+mumbai     = "${POLYGON_MUMBAI_RPC_URL}"
+polygon    = "${POLYGON_MAINNET_RPC_URL}"
+
+[etherscan]
+mumbai     = { key = "${POLYGONSCAN_API_KEY}", chain = 80001 }
+polygon    = { key = "${POLYGONSCAN_API_KEY}", chain = 137 }

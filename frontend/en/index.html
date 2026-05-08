@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JPN-PBM — Programmable Subsidy Infrastructure for Tokyo</title>
+<link rel="stylesheet" href="/ui/styles.css">
+<style>
+  .lang-toggle { float: right; font-size: 13px; color: var(--ink-sub); }
+  .lang-toggle a { color: var(--ink-sub); text-decoration: none; padding: 4px 8px; border: 1px solid var(--rule); border-radius: 4px; }
+  .lang-toggle a.active { background: var(--ink); color: white; border-color: var(--ink); }
+  .hero { padding: 32px 0 16px; }
+  .hero h1 { font-size: 28px; margin: 0 0 12px; line-height: 1.2; }
+  .hero .lede { font-size: 16px; color: var(--ink-sub); margin: 0 0 16px; max-width: 720px; }
+  .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 20px 0; }
+  .stat { background: #f8f9fb; border: 1px solid var(--rule); border-radius: 6px; padding: 14px; }
+  .stat .num { font-size: 22px; font-weight: 600; color: var(--ink); }
+  .stat .lbl { font-size: 12px; color: var(--ink-sub); text-transform: uppercase; letter-spacing: 0.04em; }
+  .doc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+  .doc { padding: 14px; border: 1px solid var(--rule); border-radius: 6px; background: white; }
+  .doc h3 { margin: 0 0 6px; font-size: 14px; }
+  .doc p { margin: 0; color: var(--ink-sub); font-size: 13px; }
+  .doc a { color: var(--ink); text-decoration: underline; font-size: 13px; }
+  .badge-cp6 { display: inline-block; padding: 2px 8px; background: #fff3cd; color: #856404; border-radius: 3px; font-size: 11px; margin-left: 6px; }
+</style>
+</head>
+<body>
+<div id="chrome"></div>
+<main>
+
+<section class="hero">
+  <div class="lang-toggle">
+    <a href="/ui/index.html">日本語</a>
+    <a href="/ui/en/index.html" class="active">English</a>
+  </div>
+  <h1>JPN-PBM — Programmable Subsidy Infrastructure</h1>
+  <p class="lede">
+    Open-source reference implementation of <b>Purpose-Bound Money (PBM)</b> for the Tokyo Metropolitan
+    Government. Yen-denominated subsidies issued by the city carry machine-readable purpose constraints,
+    redeemed at neighborhood retailers via ordinary point-of-sale, settled in JPYC stablecoin.
+    <span class="badge-cp6">★ World-first disaster-resilient offline redemption (CP-6)</span>
+  </p>
+  <div class="stat-row" id="liveStats">
+    <div class="stat"><div class="num" id="numTests">—</div><div class="lbl">Tests passing</div></div>
+    <div class="stat"><div class="num" id="numContracts">—</div><div class="lbl">Solidity contracts</div></div>
+    <div class="stat"><div class="num" id="numAudit">—</div><div class="lbl">Audit checklist</div></div>
+    <div class="stat"><div class="num" id="numDocsEn">—</div><div class="lbl">English docs</div></div>
+    <div class="stat"><div class="num" id="numVerify">—</div><div class="lbl">Verify modes</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Try the demo (4 roles)</h2>
+  <p style="margin: 0 0 14px; color: var(--ink-sub); font-size: 13px;">
+    The Japanese-language UI is the canonical interactive demo. Each tile below opens the corresponding role.
+  </p>
+  <div class="tile-grid">
+    <a class="tile" href="/ui/tokyo.html">
+      <span class="tile-role">TOKYO METROPOLITAN GOV</span>
+      <h2>Treasury console</h2>
+      <p>Design subsidy programs, lock budget, set eligible JANs / approved stores / eligible citizens.</p>
+    </a>
+    <a class="tile tile-citizen" href="/ui/citizen.html">
+      <span class="tile-role">CITIZEN</span>
+      <h2>Citizen wallet</h2>
+      <p>MyNumber-card auth surfaces eligible programs; apply for and hold PBM tokens.</p>
+    </a>
+    <a class="tile tile-retailer" href="/ui/retailer.html">
+      <span class="tile-role">RETAIL POS</span>
+      <h2>Retailer POS</h2>
+      <p>Scan JAN; eligible items auto-apply subsidy; settled in JPYC instantly (or queued offline).</p>
+    </a>
+    <a class="tile tile-ebpm" href="/ui/ebpm.html">
+      <span class="tile-role">EBPM ANALYTICS</span>
+      <h2>EBPM dashboard</h2>
+      <p>Utilization / leverage / coverage; k-anonymized export to City Council.</p>
+    </a>
+  </div>
+</section>
+
+<section>
+  <h2>Read the docs</h2>
+  <div class="doc-grid">
+    <div class="doc">
+      <h3>Whitepaper (v0.1)</h3>
+      <p><a href="https://github.com/kota1026/JPN_PBM/blob/main/docs/whitepaper-2026.md">docs/whitepaper-2026.md</a></p>
+      <p>30-page synthesis of all 10 strategy meetings: problem, architecture, CP-1..CP-7, roadmap.</p>
+    </div>
+    <div class="doc">
+      <h3>Production Runbook</h3>
+      <p><a href="https://github.com/kota1026/JPN_PBM/blob/main/docs/production-runbook.md">docs/production-runbook.md</a></p>
+      <p>5-stage rollout: testnet → PostgreSQL → HSM → MyNumber v2 → mainnet pilot.</p>
+    </div>
+    <div class="doc">
+      <h3>Disaster Fallback (CP-6)</h3>
+      <p><a href="https://github.com/kota1026/JPN_PBM/blob/main/docs/cp6-offline-fallback.md">docs/cp6-offline-fallback.md</a></p>
+      <p>Pre-signed offline coupon QR design + 30-day reconciliation window.</p>
+    </div>
+    <div class="doc">
+      <h3>Multi-municipality Fork Guide</h3>
+      <p><a href="https://github.com/kota1026/JPN_PBM/blob/main/docs/fork-guide.md">docs/fork-guide.md</a></p>
+      <p>7-step process for any Japanese municipality (Osaka / Aichi targeted Phase 3).</p>
+    </div>
+    <div class="doc">
+      <h3>Strategy Meetings (EN)</h3>
+      <p><a href="https://github.com/kota1026/JPN_PBM/tree/main/docs">docs/strategy-2026-*-en.md</a></p>
+      <p>9 of 10 meetings translated. MAS / BIS / OECD ready.</p>
+    </div>
+    <div class="doc">
+      <h3>Architecture</h3>
+      <p><a href="https://github.com/kota1026/JPN_PBM/blob/main/docs/architecture.md">docs/architecture.md</a></p>
+      <p>Layered view: UI → FastAPI → services → on-chain PBM.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Why this matters</h2>
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="label">Purpose-bound</div>
+      <div class="value" style="font-size:15px">Programmable yen</div>
+      <div class="sub">JPYC locked as collateral; unlocked only for eligible JAN × approved store × valid resident.</div>
+    </div>
+    <div class="kpi navy">
+      <div class="label">MyNumber link</div>
+      <div class="value" style="font-size:15px">Privacy-preserving</div>
+      <div class="sub">Address (ward) / age / sex used for eligibility; the My Number itself is HMAC-pseudonymized.</div>
+    </div>
+    <div class="kpi yellow">
+      <div class="label">JAN-level control</div>
+      <div class="value" style="font-size:15px">Per-product policy</div>
+      <div class="sub">Per-program eligible-JAN list; non-eligible items receive zero subsidy.</div>
+    </div>
+    <div class="kpi red">
+      <div class="label">EBPM</div>
+      <div class="value" style="font-size:15px">k-anonymous KPIs</div>
+      <div class="sub">Cells with fewer than 5 citizens are suppressed; policy effect visible in real time.</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Open source &amp; reproducible</h2>
+  <p style="color: var(--ink-sub); font-size: 13px; max-width: 720px;">
+    Apache 2.0 licensed. CI runs <code>verify.sh all</code> (pytest + seed + sol + front + audit + i18n)
+    on every PR. Reproduce locally:
+  </p>
+  <pre style="background: #f8f9fb; padding: 14px; border-radius: 6px; font-size: 12px; overflow-x: auto;">
+git clone https://github.com/kota1026/JPN_PBM
+cd JPN_PBM
+pip install -r backend/requirements.txt
+bash scripts/verify.sh all
+( cd backend &amp;&amp; uvicorn app.main:app --reload )
+# open http://127.0.0.1:8000/</pre>
+</section>
+
+</main>
+
+<script src="/ui/api.js"></script>
+<script>
+async function loadStats() {
+  try {
+    const r = await api('/treasury/roadmap');
+    const m = r.auto_metrics || {};
+    document.getElementById('numTests').textContent = m.tests || '—';
+    document.getElementById('numContracts').textContent = m.contracts || '—';
+    document.getElementById('numAudit').textContent = m.audit_checks || '—';
+    document.getElementById('numDocsEn').textContent = m.strategy_docs_en || '—';
+    document.getElementById('numVerify').textContent = m.verify_modes || '—';
+  } catch (e) {
+    // server not running — leave dashes
+  }
+}
+loadStats();
+</script>
+</body>
+</html>
