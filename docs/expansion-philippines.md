@@ -1,9 +1,14 @@
-# Philippines Expansion ─ Manila Twin-Pilot Spec (v0.1 draft)
+# Philippines Expansion ─ Manila Twin-Pilot Spec (v0.2)
 
-> **作成日**: 2026-05-04
-> **目的**: JPN-PBM を **Tokyo + Manila ツインパイロット** に拡張する戦略・技術仕様の初版
-> **位置付け**: 戦略会議 #11 候補 (Round 12 以降)、まだ実外交はゼロ
-> **ステータス**: **構想段階** ─ JICA / DICT / DSWD / BSP との接触は未
+> **初版**: 2026-05-04 / **改訂**: 2026-05-04 (Round 12, ハイブリッド方式採用)
+> **目的**: JPN-PBM を **Tokyo + Manila ツインパイロット** に拡張する戦略・技術仕様
+> **位置付け**: 戦略会議 #11 採択 (Round 12 で実装着手)、実外交はゼロ
+> **ステータス**: **設計確定** (`backend/app/services/item_eligibility.py` で実装済)
+>
+> **v0.1 → v0.2 の主な変更点**:
+> - 商品識別方式を **「店舗 MCC のみ」→ 「ハイブリッド (バーコード + MCC fallback)」** に変更
+> - 受給者が自分のスマホでバーコードをスキャンする UX を追加 (`frontend/ph/citizen.html`)
+> - 詳細なリサーチノートを `docs/qr-vs-jan-research.md` に分離
 
 ---
 
@@ -90,6 +95,34 @@ JPN-PBM のコードベースを **2 都市で共用** することで、開発�
 | 法令準拠 | 個情法 / 資金決済法 | **Data Privacy Act / BSP VASP framework** |
 | 災害種別 | 地震 | **台風・洪水** |
 | seed プログラム | 子育て / 防災備蓄 | **4Ps / 災害支援** |
+| **eligibility モード** | `jan_strict` (POS 前提) | **`hybrid`** (バーコード + MCC fallback) |
+| **商品識別レール** | バーコード POS | **受給者スマホ + GS1 480** + QR Ph MCC |
+
+### 3.3 ★ ハイブリッド eligibility ─ サリサリ現実への対応
+
+東京モデルは「JAN 厳格判定」で、POS スキャナを前提にする。
+**マニラ (および日本の個人商店) では POS スキャナがほとんど無い** ─ サリサリ 130 万店中 POS 普及はわずか 8-12%。
+
+そこで Round 12 で 3 つの判定モードを導入:
+
+| モード | 用途 | バーコードあり時 | バーコードなし時 |
+|--------|------|-----------------|------------------|
+| `jan_strict` | Tokyo (既存) | JAN list 検証 | reject |
+| `mcc_only` | サリサリ単純運用 | MCC 検証のみ | MCC 検証のみ |
+| **`hybrid`** | **Manila 推奨 / 個人商店共通** | **JAN list 厳格** | **MCC 5411 認定店 + 月次 cap** |
+
+実装: `backend/app/services/item_eligibility.py` (Round 12)、テスト 14 本 緑。
+
+**サリサリ典型カゴ例**:
+```
+✅ Lucky Me Pancit Canton    PHP  10  (JAN match)         → 補助 PHP 6
+✅ Bear Brand 粉ミルク         PHP  85  (JAN match)         → 補助 PHP 51
+✅ 米 1 カップ (はかり売り)    PHP  15  (no-barcode + MCC)   → 補助 PHP 9
+❌ Marlboro 1 本             PHP  10  (MCC 5993 ブロック)   → 補助なし
+```
+
+**no-barcode 月次 cap** (`cap_no_barcode_jpy` パラメータ): 例 PHP 300/月。これを超えたら no-barcode は reject。
+店主が「ティンギ」の名目で過剰請求するインセンティブを抑える効果。
 
 ### 3.3 コードベース構造案
 
@@ -163,19 +196,32 @@ JICA は 2024 年から「**デジタル公共財 (DPGs)**」カテゴリで OSS
 
 ---
 
-## 7. 次の 90 日で何をするか (机上のみで進む範囲)
+## 7. 進捗 (Round 12 時点で完了済) と次の 90 日
+
+### 7.1 Round 12 で完了したもの (サンドボックス内)
+
+| アイテム | ファイル | ステータス |
+|---------|---------|----------|
+| ハイブリッド eligibility 実装 | `backend/app/services/item_eligibility.py` (185 行) | ✅ 14 テスト緑 |
+| Tagalog/English citizen UI | `frontend/ph/citizen.html` (~330 行) | ✅ |
+| PH ランディング | `frontend/ph/index.html` | ✅ |
+| 受給者スマホ scan estimator (Tokyo 側にも) | `frontend/citizen.html` ⑥ section | ✅ |
+| QR vs JAN 調査ノート | `docs/qr-vs-jan-research.md` | ✅ |
+| MCC ブラックリスト (酒・タバコ・賭博) | `item_eligibility.ALWAYS_BLOCKED_MCCS` | ✅ |
+
+### 7.2 残る 90 日 (Round 13 以降)
 
 | Week | アクション | サンドボックス内? |
 |------|-----------|-------------------|
 | W1 | `seed/ph/` に 4Ps の seed JSON を draft (架空 5 世帯 × 5 sari-sari store) | ✅ |
 | W2 | `backend/app/locale/ph/id_provider.py` で PhilSys mock OAuth を実装 | ✅ |
-| W3 | `frontend/ph/index.html` を Tagalog + English で作成 | ✅ |
+| W3 | EMV QR Ph parser (フィールド 52 = MCC を厳密 decode) を実装 | ✅ |
 | W4 | `docs/whitepaper-2026.md` に Manila section を追加、英訳完成 | ✅ |
 | W5-6 | JICA フィリピン事務所への申請書ドラフト作成 (英文) | ✅ (実申請は外交) |
 | W7-8 | Coins.ph に PHPC testnet アクセスを問い合わせる準備 (英文 1 枚) | ✅ |
 | W9-12 | Quezon City Innovation Office への Sister-City 経由ルート探索 | △ (実外交) |
 
-→ **JICA 申請書ドラフト + Manila seed + Tagalog UI まではサンドボックスで完結**。
+→ **W1-4 はサンドボックス内で完結**。W5 以降は実外交が混じる。
 
 ---
 

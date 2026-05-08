@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>4Ps PBM Wallet · JPN-PBM Manila</title>
+<link rel="stylesheet" href="/ui/styles.css">
+<style>
+  .lang-toggle { float: right; font-size: 13px; }
+  .lang-toggle a { color: var(--ink-sub); text-decoration: none; padding: 3px 8px; border: 1px solid var(--rule); border-radius: 4px; margin-left: 4px; cursor: pointer; }
+  .lang-toggle a.active { background: var(--ink); color: white; border-color: var(--ink); }
+  .ph-hero { padding: 16px 0; border-bottom: 1px solid var(--rule); margin-bottom: 16px; }
+  .ph-hero h1 { font-size: 22px; margin: 0 0 6px; color: #102b4f; }
+  .ph-hero .lede { font-size: 14px; color: var(--ink-sub); margin: 0; }
+  .scan-cta { padding: 14px; background: linear-gradient(135deg, #0038A8 0%, #1f4068 100%); color: white; border-radius: 8px; text-align: center; cursor: pointer; user-select: none; margin: 16px 0; }
+  .scan-cta:hover { opacity: 0.95; }
+  .scan-cta .big { font-size: 20px; font-weight: 600; }
+  .scan-cta .sub { font-size: 12px; opacity: 0.9; margin-top: 4px; }
+  .merchant-status { padding: 10px 14px; border-radius: 6px; margin-bottom: 12px; }
+  .merchant-status.ok { background: #d3f9d8; border: 1px solid #2b8a3e; }
+  .merchant-status.none { background: #fff3cd; border: 1px solid #f59f00; }
+  .total-card { background: #f8f9fb; border: 1px solid var(--rule); border-radius: 8px; padding: 14px; margin: 14px 0; }
+  .total-card .row { display: flex; justify-content: space-between; padding: 4px 0; }
+  .total-card .row.big { font-size: 18px; font-weight: 600; border-top: 1px solid var(--rule); padding-top: 10px; margin-top: 6px; }
+  [data-lang-en] { display: none; }
+  body.lang-en [data-lang-tl] { display: none; }
+  body.lang-en [data-lang-en] { display: inherit; }
+</style>
+</head>
+<body>
+<div id="chrome"></div>
+<main>
+
+<div class="ph-hero">
+  <div class="lang-toggle">
+    <a id="langTl" class="active">Tagalog</a>
+    <a id="langEn">English</a>
+  </div>
+  <h1>
+    <span data-lang-tl>4Ps PBM Wallet</span>
+    <span data-lang-en>4Ps PBM Wallet</span>
+  </h1>
+  <p class="lede">
+    <span data-lang-tl>I-scan ang mga produkto sa iyong telepono. Awtomatikong ma-discount ang mga eligible items. Magbayad gamit ang QR Ph.</span>
+    <span data-lang-en>Scan products with your phone. Eligible items auto-discount. Pay via QR Ph.</span>
+  </p>
+</div>
+
+<section>
+  <h2><span data-lang-tl>① Mag-login (PhilSys mock)</span><span data-lang-en>① Login (PhilSys mock)</span></h2>
+  <p class="note" style="margin-top:-6px">
+    <span data-lang-tl>Ang aktwal na pilot ay gumagamit ng PhilSys (Philippine ID) verification. Ang demo na ito ay HMAC-pseudonymizes ang iyong PSN.</span>
+    <span data-lang-en>Production will use PhilSys (Philippine ID) verification. This demo HMAC-pseudonymizes your PSN.</span>
+  </p>
+  <form id="phLogin">
+    <div class="row">
+      <label data-lang-tl>PSN (PhilSys No., demo)<input name="psn" value="PH-0001"></label>
+      <label data-lang-en>PSN (PhilSys No., demo)<input name="psn" value="PH-0001"></label>
+      <label>
+        <span data-lang-tl>Pangalan</span><span data-lang-en>Name</span>
+        <input name="name" value="Maria Santos">
+      </label>
+    </div>
+    <div class="row">
+      <label>
+        <span data-lang-tl>Lungsod</span><span data-lang-en>City</span>
+        <select name="city">
+          <option value="quezon">Quezon City</option>
+          <option value="manila">Manila City</option>
+          <option value="caloocan">Caloocan City</option>
+          <option value="taguig">Taguig City</option>
+        </select>
+      </label>
+      <label>
+        <span data-lang-tl>Bilang ng anak (under 18)</span><span data-lang-en>Children under 18</span>
+        <input name="children" type="number" min="0" value="2">
+      </label>
+    </div>
+    <div class="toolbar">
+      <button type="submit" data-lang-tl>Mag-login</button>
+      <button type="submit" data-lang-en>Login</button>
+      <span class="note" data-lang-tl>Demo mode — hindi nag-iimbak ng raw PSN</span>
+      <span class="note" data-lang-en>Demo mode — no raw PSN stored</span>
+    </div>
+  </form>
+  <div id="phMe"></div>
+</section>
+
+<section>
+  <h2><span data-lang-tl>② I-scan ang merchant QR Ph</span><span data-lang-en>② Scan merchant QR Ph</span></h2>
+  <p class="note" style="margin-top:-6px">
+    <span data-lang-tl>Bago bumili, i-scan ang QR Ph sticker sa pader ng sari-sari. Ito ay nagko-confirm na ito ay isang akreditadong tindahan para sa 4Ps PBM.</span>
+    <span data-lang-en>Before buying, scan the QR Ph sticker on the sari-sari wall. This confirms the store is whitelisted for 4Ps PBM.</span>
+  </p>
+  <div class="toolbar" style="margin-bottom: 8px">
+    <button type="button" id="phScanMerchantBtn">📷
+      <span data-lang-tl>I-scan ang Merchant QR</span>
+      <span data-lang-en>Scan Merchant QR</span>
+    </button>
+    <span id="phMerchantStatus" class="note grow">
+      <span data-lang-tl>Walang merchant pa.</span>
+      <span data-lang-en>No merchant scanned yet.</span>
+    </span>
+  </div>
+  <div id="phMerchantBox"></div>
+</section>
+
+<section>
+  <h2><span data-lang-tl>③ I-scan ang mga produkto</span><span data-lang-en>③ Scan products</span></h2>
+  <p class="note" style="margin-top:-6px">
+    <span data-lang-tl>Para sa mga branded na produkto na may barcode (Lucky Me, Bear Brand, atbp.), i-scan ang barcode. Para sa tingi (sachet, bigas sa tabo), pindutin ang "Tingi item" — ito ay ipapatakbo sa monthly no-barcode budget.</span>
+    <span data-lang-en>For branded barcoded items (Lucky Me, Bear Brand, etc.), scan the barcode. For tingi (sachets, rice by cup), tap "Tingi item" — these go against the monthly no-barcode budget.</span>
+  </p>
+  <div class="scan-cta" id="phScanItemBtn">
+    <div class="big">📷
+      <span data-lang-tl>I-scan ang Barcode</span>
+      <span data-lang-en>Scan Barcode</span>
+    </div>
+    <div class="sub">
+      <span data-lang-tl>Itutok ang camera sa EAN-13 barcode</span>
+      <span data-lang-en>Point camera at EAN-13 barcode</span>
+    </div>
+  </div>
+  <div class="toolbar" style="margin: 8px 0">
+    <button type="button" class="ghost" id="phTingiBtn">+
+      <span data-lang-tl>Tingi item (walang barcode)</span>
+      <span data-lang-en>Tingi item (no barcode)</span>
+    </button>
+    <button type="button" class="ghost" id="phResetBtn">
+      <span data-lang-tl>I-reset</span>
+      <span data-lang-en>Reset</span>
+    </button>
+    <span id="phScanStatus" class="note grow"></span>
+  </div>
+  <div id="phCart" class="empty">
+    <span data-lang-tl>Naghihintay ng scan...</span>
+    <span data-lang-en>Waiting for scan...</span>
+  </div>
+</section>
+
+<section>
+  <h2><span data-lang-tl>④ Magbayad gamit ang QR Ph</span><span data-lang-en>④ Pay with QR Ph</span></h2>
+  <div id="phTotal" class="total-card">
+    <div class="row">
+      <span data-lang-tl>Kabuuan ng pamimili</span><span data-lang-en>Cart total</span>
+      <span id="phTotalPrice">PHP 0.00</span>
+    </div>
+    <div class="row">
+      <span data-lang-tl>4Ps subsidy (PHPC)</span><span data-lang-en>4Ps subsidy (PHPC)</span>
+      <span id="phTotalSubsidy">PHP 0.00</span>
+    </div>
+    <div class="row big">
+      <span data-lang-tl>Babayaran mo (cash/GCash)</span><span data-lang-en>You pay (cash/GCash)</span>
+      <span id="phTotalSelf">PHP 0.00</span>
+    </div>
+  </div>
+  <button type="button" id="phPayBtn" disabled>
+    <span data-lang-tl>Magbayad ngayon (mock)</span>
+    <span data-lang-en>Pay now (mock)</span>
+  </button>
+  <div id="phPayResult"></div>
+</section>
+
+</main>
+
+<script type="module">
+import { scanOnce } from '/ui/scanner.js';
+window.__phScan = scanOnce;
+</script>
+<script src="/ui/api.js"></script>
+<script>
+/* ===== language toggle ===== */
+function setLang(lang) {
+  document.body.classList.toggle('lang-en', lang === 'en');
+  document.getElementById('langTl').classList.toggle('active', lang === 'tl');
+  document.getElementById('langEn').classList.toggle('active', lang === 'en');
+}
+document.getElementById('langTl').addEventListener('click', () => setLang('tl'));
+document.getElementById('langEn').addEventListener('click', () => setLang('en'));
+setLang('tl');  // default
+
+/* ===== mock state ===== */
+let phPid = null;
+let phMerchant = null;     // { id, mcc, name, approvedFor: [progIds] }
+const phCart = [];         // [{ jan|null, name, price, eligible, subsidy, kind: 'barcode'|'tingi' }]
+
+const PHP = (php) => 'PHP ' + (php / 100).toFixed(2);   // インテーブルは centavos 想定
+
+/* ===== ① login (HMAC) ===== */
+document.getElementById('phLogin').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const data = Object.fromEntries(new FormData(ev.target));
+  // ローカルで簡易 HMAC (実装側に PhilSys provider が出来るまではこの mock)
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode('demo-philsys'),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(data.psn || 'PH-0001'));
+  phPid = Array.from(new Uint8Array(sig)).slice(0, 8).map(b => b.toString(16).padStart(2, '0')).join('');
+  const me = document.getElementById('phMe');
+  me.innerHTML = '';
+  me.appendChild(el('div', { class: 'kpi green' },
+    el('div', { class: 'label' }, 'PhilSys PID (HMAC)'),
+    el('div', { class: 'value', style: 'font-size:14px' }, phPid),
+    el('div', { class: 'sub' }, data.name + ' / ' + data.city + ' / ' + data.children + ' children')
+  ));
+});
+
+/* ===== ② merchant QR scan ===== */
+document.getElementById('phScanMerchantBtn').addEventListener('click', async () => {
+  if (!phPid) { alert('Mag-login muna / Login first'); return; }
+  let scanned;
+  try {
+    scanned = await window.__phScan({
+      title: 'Scan merchant QR Ph',
+      formatHint: 'QR Ph sticker sa sari-sari'
+    });
+  } catch (e) {
+    document.getElementById('phMerchantStatus').textContent = e.message;
+    return;
+  }
+  // QR Ph payload を mock parse (本番は EMV QR Code Specification)
+  // ここでは "MCH:<id>:<mcc>:<name>" 形式の単純文字列を想定 (デモ用)
+  let parts = scanned.text.split(':');
+  if (parts[0] !== 'MCH' || parts.length < 4) {
+    // EMV QR の代わりにフリーフォーマット入力されたらフォールバック
+    parts = ['MCH', scanned.text, '5411', 'Aling Maria\'s Store'];
+  }
+  phMerchant = { id: parts[1], mcc: parseInt(parts[2], 10), name: parts[3], approvedFor: ['prog-4ps-2026'] };
+  const box = document.getElementById('phMerchantBox');
+  box.innerHTML = '';
+  const blockedMcc = [5921, 5993, 5813, 7995].includes(phMerchant.mcc);
+  const cls = blockedMcc ? 'merchant-status none' : 'merchant-status ok';
+  box.appendChild(el('div', { class: cls },
+    el('div', {}, el('b', {}, phMerchant.name)),
+    el('div', { class: 'note' },
+      'MCC ' + phMerchant.mcc +
+      (blockedMcc ? ' — BLOCKED (alcohol/tobacco/gambling)' :
+                    ' — approved for 4Ps PBM')
+    )
+  ));
+  document.getElementById('phMerchantStatus').textContent =
+    (blockedMcc ? '⚠ blocked merchant' : '✓ approved') + ' — ' + phMerchant.name;
+});
+
+/* ===== ③ scan items ===== */
+document.getElementById('phScanItemBtn').addEventListener('click', async () => {
+  if (!phPid) { alert('Mag-login muna / Login first'); return; }
+  if (!phMerchant) { alert('I-scan muna ang merchant / Scan merchant QR first'); return; }
+  if ([5921, 5993, 5813, 7995].includes(phMerchant.mcc)) {
+    alert('Merchant ay BLOCKED (alcohol/tobacco/gambling)'); return;
+  }
+  let scanned;
+  try {
+    scanned = await window.__phScan({
+      title: 'Scan product barcode',
+      formatHint: 'EAN-13 / GS1-480 / JAN'
+    });
+  } catch (e) { return; }
+  const jan = scanned.text.trim();
+  // 商品マスタ照会 (Tokyo の seed をそのまま流用、PH 専用 seed は Round 13)
+  let product = null;
+  try { product = await api('/products/' + encodeURIComponent(jan)); } catch (_) {}
+  if (!product) {
+    // 未登録 JAN は eligible リストにヒットしないので "対象外" 扱い
+    phCart.push({
+      jan, name: '(unregistered ' + jan + ')',
+      price: 0, eligible: false, subsidy: 0, kind: 'barcode',
+    });
+  } else {
+    // hybrid mode で JAN が baby/grocery カテゴリにヒットすれば eligible
+    const eligible = ['baby', 'food.staple', 'household.daily'].some(c =>
+      product.category && product.category.startsWith(c.split('.')[0])
+    );
+    phCart.push({
+      jan, name: product.name, price: product.price_jpy,
+      eligible, subsidy: eligible ? Math.floor(product.price_jpy * 0.6) : 0,
+      kind: 'barcode',
+    });
+  }
+  renderPhCart();
+});
+
+document.getElementById('phTingiBtn').addEventListener('click', () => {
+  if (!phMerchant) { alert('Scan merchant QR first'); return; }
+  const priceStr = prompt('Tingi item price (PHP, e.g. 10.00)?');
+  if (!priceStr) return;
+  const priceCents = Math.round(parseFloat(priceStr) * 100);
+  if (isNaN(priceCents) || priceCents <= 0) return;
+  // hybrid: tingi (no-barcode) needs MCC approved + monthly cap (PHP 300 = 30000 cents)
+  const noBarcodeUsed = phCart.filter(i => i.kind === 'tingi' && i.eligible)
+                              .reduce((a, i) => a + i.price, 0);
+  const cap = 30000;  // PHP 300/month
+  const wouldBe = noBarcodeUsed + priceCents;
+  const eligible = phMerchant.mcc === 5411 && wouldBe <= cap;
+  phCart.push({
+    jan: null, name: 'Tingi item (no barcode)', price: priceCents,
+    eligible, subsidy: eligible ? Math.floor(priceCents * 0.6) : 0,
+    kind: 'tingi',
+    reason: eligible ? 'no-barcode budget OK' : `cap PHP 300/month (used ${(noBarcodeUsed/100).toFixed(2)})`,
+  });
+  renderPhCart();
+});
+
+document.getElementById('phResetBtn').addEventListener('click', () => {
+  phCart.length = 0;
+  renderPhCart();
+});
+
+function renderPhCart() {
+  const root = document.getElementById('phCart');
+  root.innerHTML = '';
+  if (!phCart.length) {
+    root.className = 'empty';
+    root.textContent = 'Waiting for scan...';
+    document.getElementById('phPayBtn').disabled = true;
+    return;
+  }
+  root.className = '';
+  const tbl = el('table', {},
+    el('thead', {}, el('tr', {},
+      el('th', {}, 'Item'),
+      el('th', {}, 'Type'),
+      el('th', { class: 'num' }, 'Price'),
+      el('th', {}, 'Eligible?'),
+      el('th', { class: 'num' }, 'Subsidy')
+    )),
+    el('tbody', {})
+  );
+  let totalPrice = 0, totalSubsidy = 0;
+  for (const it of phCart) {
+    totalPrice += it.price;
+    totalSubsidy += it.subsidy;
+    tbl.querySelector('tbody').appendChild(el('tr', {},
+      el('td', {}, it.name),
+      el('td', {},
+        el('span', { class: it.kind === 'barcode' ? 'badge' : 'badge gray' },
+          it.kind === 'barcode' ? 'Barcode' : 'Tingi')),
+      el('td', { class: 'num' }, PHP(it.price)),
+      el('td', {},
+        it.eligible ? el('span', { class: 'badge' }, '✓')
+                    : el('span', { class: 'badge gray' }, '✗')),
+      el('td', { class: 'num' },
+        it.eligible ? el('b', {}, PHP(it.subsidy))
+                    : el('span', { class: 'note' }, (it.reason || 'not eligible').slice(0, 30)))
+    ));
+  }
+  root.appendChild(tbl);
+  document.getElementById('phTotalPrice').textContent = PHP(totalPrice);
+  document.getElementById('phTotalSubsidy').textContent = PHP(totalSubsidy);
+  document.getElementById('phTotalSelf').textContent = PHP(totalPrice - totalSubsidy);
+  document.getElementById('phPayBtn').disabled = totalPrice === 0;
+}
+
+document.getElementById('phPayBtn').addEventListener('click', () => {
+  const out = document.getElementById('phPayResult');
+  out.innerHTML = '';
+  out.appendChild(el('div', { class: 'kpi green', style: 'margin-top:14px' },
+    el('div', { class: 'label' }, '✓ Mock payment complete'),
+    el('div', { class: 'value', style: 'font-size:14px' },
+      'Subsidy ' + document.getElementById('phTotalSubsidy').textContent +
+      ' delivered to merchant in PHPC'),
+    el('div', { class: 'sub' },
+      'Production: this would call QR Ph rail + PHPC.transfer() on Polygon')
+  ));
+});
+
+renderPhCart();
+</script>
+</body>
+</html>

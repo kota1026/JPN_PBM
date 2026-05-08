@@ -113,11 +113,28 @@
   <div id="pbmList" class="empty">なし</div>
 </section>
 
+<section>
+  <h2>⑥ 事前スキャン試算 <span class="badge gray">スマホ POS 不要</span></h2>
+  <p class="note" style="margin-top:-6px">
+    自分のスマホでカゴに入れた商品の <b>JAN/EAN-13 バーコード</b> をスキャンするだけで、
+    どれが対象でいくら補助されるかが店内・自宅で即座に分かります。
+    加盟店に POS が無くても運用できる方式 (戦略会議 #11)。
+    <br><b>サリサリ・個人商店ユースケース</b>: 受給者が自分でスキャンして合計を確認 → QR Ph で支払い。
+  </p>
+  <div class="toolbar" style="margin-bottom:8px">
+    <button type="button" id="scanItemBtn">📷 商品をスキャン</button>
+    <button type="button" class="ghost" id="scanResetBtn">リセット</button>
+    <span id="scanStatus" class="note grow">先に上で認証してください</span>
+  </div>
+  <div id="scanCart" class="empty">商品スキャン待ち</div>
+</section>
+
 </main>
 
 <script type="module">
-import { drawQR } from '/ui/scanner.js';
+import { drawQR, scanOnce } from '/ui/scanner.js';
 window.__drawQR = drawQR;
+window.__scanOnce = scanOnce;
 </script>
 <script src="/ui/api.js"></script>
 <script>
@@ -347,6 +364,132 @@ document.getElementById('cp6IssueBtn')?.addEventListener('click', async () => {
     out.appendChild(el('div', { class: 'error' }, '発行失敗: ' + e.message));
   }
 });
+
+/* ===== ⑥ 事前スキャン試算 (戦略会議 #11 採択 T1) =====
+   受給者が自分のスマホで JAN を読んで「補助対象か / いくら出るか」を即時表示。
+   サリサリ・個人商店のように POS が無い場でも運用可能にする検証 UX。
+*/
+const scanCart = []; // [{jan, name, price, qty, programId, subsidy, eligible, reason}]
+
+document.getElementById('scanResetBtn')?.addEventListener('click', () => {
+  scanCart.length = 0;
+  renderScanCart();
+  document.getElementById('scanStatus').textContent = pid ? 'リセット' : '先に上で認証してください';
+});
+
+document.getElementById('scanItemBtn')?.addEventListener('click', async () => {
+  if (!pid) { alert('先に認証してください'); return; }
+  const status = document.getElementById('scanStatus');
+  let scanned;
+  try {
+    scanned = await window.__scanOnce({
+      title: '商品バーコードをスキャン',
+      formatHint: 'JAN/EAN-13 を画面中央にかざしてください'
+    });
+  } catch (e) {
+    status.textContent = e.message === 'cancelled' ? 'キャンセル' : ('スキャンエラー: ' + e.message);
+    return;
+  }
+  const jan = scanned.text.trim();
+  status.innerHTML = '<span class="loading"></span>商品マスタ照会中…';
+
+  // 商品マスタ照会
+  let product = null;
+  try {
+    product = await api('/products/' + encodeURIComponent(jan));
+  } catch (_) {
+    // 404 = マスタ未登録 → ハイブリッド判定で「バーコード無し扱い」相当として扱う
+  }
+
+  // 受給可能 program と PBM 残枠を取得
+  const eligible = await api('/programs/eligible?pid=' + pid);
+  const wallet = await api('/wallet/citizen/' + pid);
+  const tokenByProg = Object.fromEntries(
+    wallet.pbm_tokens.filter(t => t.status === 'ISSUED' && t.remaining_jpy > 0)
+                     .map(t => [t.program_id, t])
+  );
+
+  // 各 program に対して eligibility を試算 (フロントは backend のロジックを近似)
+  let bestProg = null, bestSubsidy = 0, reason = '商品マスタ未登録 / 対象外';
+  if (product) {
+    for (const p of eligible) {
+      const inJanList = (p.eligible_jans || []).includes(jan);
+      const inCategory = (p.eligible_categories || []).includes(product.category);
+      const excluded = (p.excluded_jans || []).includes(jan);
+      if (excluded) continue;
+      if (!inJanList && !inCategory) continue;
+      const tok = tokenByProg[p.id];
+      if (!tok) continue;
+      const raw = Math.floor(product.price_jpy * (p.subsidy_bps / 10000));
+      const subsidy = Math.min(raw, tok.remaining_jpy);
+      if (subsidy > bestSubsidy) {
+        bestProg = p; bestSubsidy = subsidy;
+        reason = `${p.name} (補助 ${(p.subsidy_bps/100).toFixed(0)}%)`;
+      }
+    }
+    if (!bestProg) reason = product.category + ' は対象プログラム無し';
+  }
+
+  scanCart.push({
+    jan, name: product ? product.name : '(マスタ未登録)',
+    price: product ? product.price_jpy : 0, qty: 1,
+    programId: bestProg ? bestProg.id : null,
+    subsidy: bestSubsidy, eligible: !!bestProg, reason,
+  });
+  renderScanCart();
+  status.textContent = `${scanCart.length} 件目: ${product ? product.name : jan}`;
+});
+
+function renderScanCart() {
+  const root = document.getElementById('scanCart');
+  root.innerHTML = '';
+  if (!scanCart.length) {
+    root.className = 'empty';
+    root.textContent = '商品スキャン待ち';
+    return;
+  }
+  root.className = '';
+  const tbl = el('table', {},
+    el('thead', {}, el('tr', {},
+      el('th', {}, 'JAN'), el('th', {}, '商品'),
+      el('th', { class: 'num' }, '価格'),
+      el('th', {}, '対象?'),
+      el('th', { class: 'num' }, '補助額')
+    )),
+    el('tbody', {})
+  );
+  let totalPrice = 0, totalSubsidy = 0;
+  for (const it of scanCart) {
+    totalPrice += it.price;
+    totalSubsidy += it.subsidy;
+    tbl.querySelector('tbody').appendChild(el('tr', {},
+      el('td', {}, el('code', {}, it.jan.slice(0, 13))),
+      el('td', {}, it.name),
+      el('td', { class: 'num' }, fmtJpy(it.price)),
+      el('td', {},
+        it.eligible
+          ? el('span', { class: 'badge' }, '対象')
+          : el('span', { class: 'badge gray' }, '対象外')
+      ),
+      el('td', { class: 'num' },
+        it.eligible
+          ? el('b', {}, fmtJpy(it.subsidy))
+          : el('span', { class: 'note' }, it.reason.slice(0, 28))
+      )
+    ));
+  }
+  tbl.querySelector('tbody').appendChild(el('tr', { style: 'background:#f8f9fb;font-weight:600' },
+    el('td', { colspan: '2' }, '合計'),
+    el('td', { class: 'num' }, fmtJpy(totalPrice)),
+    el('td', {}),
+    el('td', { class: 'num' }, fmtJpy(totalSubsidy))
+  ));
+  tbl.querySelector('tbody').appendChild(el('tr', { style: 'background:#fff8db' },
+    el('td', { colspan: '4' }, el('b', {}, '自己負担額')),
+    el('td', { class: 'num' }, el('b', {}, fmtJpy(totalPrice - totalSubsidy)))
+  ));
+  root.appendChild(tbl);
+}
 </script>
 </body>
 </html>
