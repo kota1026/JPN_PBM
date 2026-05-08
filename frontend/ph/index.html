@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JPN-PBM · Manila Pilot — 4Ps Programmable Subsidy</title>
+<link rel="stylesheet" href="/ui/styles.css">
+<style>
+  .lang-toggle { float: right; font-size: 13px; }
+  .lang-toggle a { color: var(--ink-sub); text-decoration: none; padding: 4px 8px; border: 1px solid var(--rule); border-radius: 4px; margin-left: 4px; }
+  .lang-toggle a.active { background: var(--ink); color: white; border-color: var(--ink); }
+  .hero { padding: 28px 0 14px; }
+  .hero h1 { font-size: 26px; margin: 0 0 12px; line-height: 1.2; color: #102b4f; }
+  .hero .lede { font-size: 16px; color: var(--ink-sub); margin: 0 0 16px; max-width: 720px; }
+  .ph-flag { display: inline-block; background: linear-gradient(to right, #0038A8 33%, #FFFFFF 33%, #FFFFFF 67%, #CE1126 67%); width: 28px; height: 18px; border: 1px solid #ccc; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
+  .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 16px 0; }
+  .stat { background: #f8f9fb; border: 1px solid var(--rule); border-radius: 6px; padding: 12px; }
+  .stat .num { font-size: 22px; font-weight: 600; color: var(--ink); }
+  .stat .lbl { font-size: 12px; color: var(--ink-sub); }
+  .doc { padding: 14px; border: 1px solid var(--rule); border-radius: 6px; background: white; margin-bottom: 8px; }
+  .doc h3 { margin: 0 0 4px; font-size: 14px; }
+  .doc p { margin: 4px 0; color: var(--ink-sub); font-size: 13px; }
+  .badge-typhoon { display: inline-block; padding: 2px 8px; background: #d3f9d8; color: #2b8a3e; border-radius: 3px; font-size: 11px; margin-left: 6px; }
+</style>
+</head>
+<body>
+<div id="chrome"></div>
+<main>
+
+<section class="hero">
+  <div class="lang-toggle">
+    <a href="/ui/index.html">日本語</a>
+    <a href="/ui/en/index.html">English</a>
+    <a href="/ui/ph/index.html" class="active"><span class="ph-flag"></span>Philippines</a>
+  </div>
+  <h1>JPN-PBM · Manila Pilot</h1>
+  <p class="lede">
+    A <b>Programmable Peso</b> infrastructure for the Philippines, built on top of <b>PHPC</b>
+    (BSP-approved peso stablecoin by Coins.ph) and <b>QR Ph</b>.
+    Same open-source codebase as Tokyo, adapted for the realities of <b>sari-sari stores</b>:
+    no POS hardware required, smartphone barcode scan, hybrid eligibility (JAN + MCC fallback).
+    <span class="badge-typhoon">★ Disaster-resilient (CP-6) — works during typhoons offline</span>
+  </p>
+  <div class="stat-row">
+    <div class="stat"><div class="num">4.4M</div><div class="lbl">4Ps households (target)</div></div>
+    <div class="stat"><div class="num">~1.3M</div><div class="lbl">Sari-sari stores nationwide</div></div>
+    <div class="stat"><div class="num">~80M</div><div class="lbl">GCash UU (existing rail)</div></div>
+    <div class="stat"><div class="num">PHPC</div><div class="lbl">BSP-approved stablecoin</div></div>
+    <div class="stat"><div class="num" id="numTests">—</div><div class="lbl">Tests passing (shared codebase)</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Try the citizen demo</h2>
+  <p style="margin: 0 0 14px; color: var(--ink-sub); font-size: 13px;">
+    The flow is identical for Tokyo and Manila — only the underlying token, IDs, and language change.
+    The Philippine demo uses smartphone barcode scanning instead of POS.
+  </p>
+  <div class="tile-grid">
+    <a class="tile" href="/ui/ph/citizen.html">
+      <span class="tile-role">4Ps RECIPIENT</span>
+      <h2>Citizen wallet (Tagalog/EN)</h2>
+      <p>Scan barcodes with your phone. Eligible items auto-discount. Pay via QR Ph.</p>
+    </a>
+    <a class="tile tile-ebpm" href="/ui/ebpm.html">
+      <span class="tile-role">DSWD ANALYTICS</span>
+      <h2>EBPM dashboard (shared)</h2>
+      <p>Same k-anonymous KPI stack as Tokyo. Real-time program effect.</p>
+    </a>
+  </div>
+</section>
+
+<section>
+  <h2>Hybrid eligibility: built for sari-sari reality</h2>
+  <div class="doc">
+    <h3>1. Branded packaged goods (Lucky Me, Bear Brand, Pampers, sachets in box)</h3>
+    <p>→ <b>JAN/EAN-13 barcode</b> scan from smartphone. Strict per-product eligibility.</p>
+  </div>
+  <div class="doc">
+    <h3>2. Tingi / loose goods (rice by cup, sugar by kilo, single sachets)</h3>
+    <p>→ <b>Store MCC fallback</b>. Sari-sari pre-approved as MCC 5411 (grocery) gets a monthly no-barcode budget cap (e.g. PHP 300 / month).</p>
+  </div>
+  <div class="doc">
+    <h3>3. Liquor / tobacco / gambling (MCC 5921 / 5993 / 5813 / 7995)</h3>
+    <p>→ <b>Always blocked</b>. Even if a "grocery" sari-sari diversifies into liquor, those merchants drop out of the whitelist.</p>
+  </div>
+  <p class="note" style="font-size: 13px;">
+    Architecture spec: <a href="https://github.com/kota1026/JPN_PBM/blob/main/docs/expansion-philippines.md">docs/expansion-philippines.md</a> ·
+    Code: <code>backend/app/services/item_eligibility.py</code>
+  </p>
+</section>
+
+<section>
+  <h2>Why Manila now?</h2>
+  <ul style="font-size: 14px; color: var(--ink-sub); line-height: 1.7;">
+    <li><b>4Ps</b> (Pantawid Pamilyang Pilipino Program) reaches 4.4M households / ~20M people — single-program scale that exceeds anything in Japan.</li>
+    <li><b>BSP regulatory sandbox</b> already approved PHPC (2024) — the legal vehicle exists.</li>
+    <li><b>Typhoons hit ~20×/year</b> + flooding + volcanic activity — CP-6 disaster fallback delivers value <b>monthly</b>, not once-a-decade.</li>
+    <li><b>GCash QR Ph</b> is universally adopted at sari-sari level — payment rail is already there.</li>
+    <li><b>JICA's Digital Public Goods funding</b> (¥30–100M/year) explicitly fits this model.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Source &amp; license</h2>
+  <p style="color: var(--ink-sub); font-size: 13px;">
+    Apache 2.0 · <a href="https://github.com/kota1026/JPN_PBM">github.com/kota1026/JPN_PBM</a> · 99% codebase shared with Tokyo pilot.
+  </p>
+</section>
+
+</main>
+
+<script src="/ui/api.js"></script>
+<script>
+async function loadStats() {
+  try {
+    const r = await api('/treasury/roadmap');
+    const m = r.auto_metrics || {};
+    document.getElementById('numTests').textContent = m.tests || '—';
+  } catch (e) {}
+}
+loadStats();
+</script>
+</body>
+</html>
