@@ -77,6 +77,12 @@ run_i18n() {
   ok "i18n"
 }
 
+run_deploy_check() {
+  step "deploy-check" "Polygon Mumbai デプロイ準備の dry-check"
+  bash scripts/deploy_mumbai.sh --dry-check 2>&1 | sed 's/^/    /' || fail "deploy-check NG"
+  ok "deploy-check"
+}
+
 run_sweep_dryrun() {
   step "sweep" "期限切れ PBM の dry-run sweep"
   python scripts/cron_sweep.py 2>&1 | sed 's/^/    /' || fail "sweep NG"
@@ -145,11 +151,12 @@ case "$MODE" in
   ready) run_readiness ;;
   audit) run_audit ;;
   i18n)  run_i18n ;;
+  deploy-check) run_deploy_check ;;
   e2e)   run_e2e ;;
   front) run_front_js_check ;;
   load)  run_load ;;
   quick) run_pytest; run_seed_check ;;
-  all|*) run_pytest; run_seed_check; run_sol_check; run_front_js_check; run_audit; run_i18n ;;
+  all|*) run_pytest; run_seed_check; run_sol_check; run_front_js_check; run_audit; run_i18n; run_deploy_check ;;
 esac
 
 printf "\n\033[1;32m✓ verify(%s) all green\033[0m\n" "$MODE"

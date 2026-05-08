@@ -20,20 +20,46 @@ hardware at neighborhood retailers, settled in the JPY-pegged stablecoin **JPYC*
 This whitepaper consolidates ten rounds of design (Strategy Meetings #1–#10)
 into a single technical and policy reference. It demonstrates:
 
-- A **production-ready open-source reference implementation** (150+ tests passing,
-  GitHub Actions CI green) that any Japanese municipality can fork.
+- An **open-source sandbox implementation** (150+ tests passing, GitHub Actions
+  CI green, Apache 2.0) that any Japanese municipality can fork.
 - A **24-item self-audit** of the on-chain contracts (PBM + offline-fallback)
   with `ok=39 / warn=5 / fail=0`.
-- A **disaster-resilient redemption path (CP-6)** — a world-first feature that
-  allows offline subsidy redemption during a Tokyo Inland Earthquake scenario
-  via pre-signed ECDSA QR coupons.
+- A **disaster-resilient redemption design (CP-6)** — a world-first proposal
+  that allows offline subsidy redemption during a Tokyo Inland Earthquake
+  scenario via pre-signed ECDSA QR coupons.
 - A concrete **18-month rollout plan** (Phase 1 Tokyo → Phase 2 23-ward expansion
   → Phase 3 institutional integration with FSA / OECD).
 
-The reference implementation can run end-to-end from a SQLite sandbox to a
-PostgreSQL + AWS CloudHSM + Polygon mainnet production deployment with
-**zero code path changes**, only environment-variable swaps documented in
-[`docs/production-runbook.md`](./production-runbook.md).
+### Honest status of the implementation
+
+What is **real and reproducible today**:
+
+- A Python service layer (`backend/app/services/*`) that mirrors the Solidity
+  contract semantics one-to-one.
+- Solidity source for two contracts (`PBM.sol`, `PBMOfflineFallback.sol`) that
+  passes the 24-item self-audit checklist.
+- Byte-level cryptographic compatibility between the Python signer and Solidity
+  `ecrecover` (`services/sol_compat.py` + 31 ECDSA test vectors).
+- A Python EVM mini-simulator (`services/sol_simulator.py`) that reproduces the
+  contract state transitions for `redeemBatch` without an actual chain.
+
+What is **not yet real** (and the whitepaper is explicit about it):
+
+- The contracts have **not been deployed to any blockchain**, including Polygon
+  Mumbai testnet. Deployment is scheduled for the day a testnet RPC URL is
+  provisioned (Round 12 candidate, ~3 working days).
+- JPYC is not yet wired against the deployed contract. Wiring is straightforward
+  once both are on the same chain.
+- HSM custody is implemented as a stub adapter; a real PKCS#11 / AWS CloudHSM
+  binding is required before mainnet pilot.
+- External smart-contract audit (Quantstamp / OpenZeppelin / Trail of Bits) is
+  scheduled before Phase 2 mainnet pilot.
+
+The reference implementation is designed so the same code can run end-to-end
+from a SQLite sandbox to a PostgreSQL + AWS CloudHSM + Polygon mainnet
+production deployment with **zero code path changes**, only environment-variable
+swaps documented in [`docs/production-runbook.md`](./production-runbook.md).
+That migration path has been **validated by tests**, not by a live deployment.
 
 ---
 

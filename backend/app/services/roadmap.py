@@ -47,9 +47,17 @@ MILESTONES: list[Milestone] = [
               "blocked", blocking_reason="実外交"),
     Milestone(1, "M+1",  "PoC → JPYC 本物トークン (Polygon)",
               "ready",
-              notes="MVP 差替準備完了。HMAC PID / OAuth Mock / 災害用 QR まで揃う",
+              notes=(
+                  "MVP 差替準備完了。HMAC PID / OAuth Mock / 災害用 QR + "
+                  "Polygon Mumbai デプロイ scripts 整備済 (R12 で実行可) ─ "
+                  "RPC URL 払出後 3 日で testnet 上稼働"
+              ),
               evidence_files=["backend/app/services/privacy.py",
-                              "backend/app/routers/myna_oauth.py"]),
+                              "backend/app/routers/myna_oauth.py",
+                              "foundry.toml",
+                              "scripts/forge/DeployPBM.s.sol",
+                              "scripts/deploy_mumbai.sh",
+                              "docs/deploy-mumbai.md"]),
     Milestone(1, "M+2",  "加盟店 eKYC + POS SDK 配布",
               "done",
               notes="POS SDK Python (R3) + UI 承認 (R4)",
