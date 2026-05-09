@@ -83,6 +83,18 @@ run_deploy_check() {
   ok "deploy-check"
 }
 
+run_handoff() {
+  step "handoff" "提出物パッケージビルダ smoke-test (jica のみ)"
+  if ! command -v zip >/dev/null 2>&1; then
+    printf "  \033[1;33m⊝\033[0m zip コマンド未インストール — skip\n"
+    return 0
+  fi
+  OUTDIR=/tmp bash scripts/build_handoff_package.sh jica > /dev/null 2>&1 \
+    || fail "handoff package build NG"
+  test -f /tmp/jpn-pbm-handoff-jica-*.zip || fail "handoff zip not found"
+  ok "handoff"
+}
+
 run_sweep_dryrun() {
   step "sweep" "期限切れ PBM の dry-run sweep"
   python scripts/cron_sweep.py 2>&1 | sed 's/^/    /' || fail "sweep NG"
@@ -152,11 +164,12 @@ case "$MODE" in
   audit) run_audit ;;
   i18n)  run_i18n ;;
   deploy-check) run_deploy_check ;;
+  handoff) run_handoff ;;
   e2e)   run_e2e ;;
   front) run_front_js_check ;;
   load)  run_load ;;
   quick) run_pytest; run_seed_check ;;
-  all|*) run_pytest; run_seed_check; run_sol_check; run_front_js_check; run_audit; run_i18n; run_deploy_check ;;
+  all|*) run_pytest; run_seed_check; run_sol_check; run_front_js_check; run_audit; run_i18n; run_deploy_check; run_handoff ;;
 esac
 
 printf "\n\033[1;32m✓ verify(%s) all green\033[0m\n" "$MODE"
