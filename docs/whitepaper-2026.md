@@ -24,7 +24,7 @@ into a single technical and policy reference. It demonstrates:
   CI green, Apache 2.0) that any Japanese municipality can fork.
 - A **24-item self-audit** of the on-chain contracts (PBM + offline-fallback)
   with `ok=39 / warn=5 / fail=0`.
-- A **disaster-resilient redemption design (CP-6)** — a world-first proposal
+- A **disaster-resilient redemption design (CP-6 v2)** — two designs, one codebase
   that allows offline subsidy redemption during a Tokyo Inland Earthquake
   scenario via pre-signed ECDSA QR coupons.
 - A concrete **18-month rollout plan** (Phase 1 Tokyo → Phase 2 23-ward expansion
@@ -222,57 +222,71 @@ External audit (Quantstamp / OpenZeppelin / Trail of Bits) is scheduled
 
 ---
 
-## 4. Disaster-Resilient Redemption (CP-6)
+## 4. Disaster-Resilient Redemption (CP-6) — v2 (revised 2026-05)
 
-### 4.1 Threat model
+> **Important note**: An earlier v1 design (preserved at [`docs/cp6-offline-fallback.md`](./cp6-offline-fallback.md)) assumed retailer POS terminals continued to operate during a disaster. **This assumption is wrong**: power outages disable POS, store buildings may collapse, and shop staff evacuate themselves. The v2 design below redesigns CP-6 from first principles. Full meeting record: [`docs/strategy-2026-05-round17.md`](./strategy-2026-05-round17.md).
 
-A 7.0-magnitude inland earthquake under Tokyo, projected with ~70%
-probability within 30 years by the Earthquake Research Committee, may
-disable mobile networks for 3–14 days. Subsidy systems that depend on
-online ledger access **fail closed**, leaving disaster-stricken citizens
-unable to redeem food / supply allowances at exactly the moment they need
-them most.
+### 4.1 The right question
 
-### 4.2 Design
+❌ Old framing: "How do we keep the POS running offline?"
+✅ Correct framing: **"With zero power and zero connectivity, what authentication system prevents impersonation and double-spending?"**
 
-In peacetime, when the treasury issues a PBM to a citizen, it also signs
-a monthly **OfflineCoupon** with the governor ECDSA key:
+This shift acknowledges power loss as a *baseline* assumption, not an edge case.
 
-```solidity
-struct OfflineCoupon {
-    bytes32 programId;
-    bytes32 pid;          // HMAC pseudonym
-    uint32  monthIndex;   // e.g. 202604
-    uint256 capJpy;       // monthly limit
-    uint64  expiresAt;    // 30 days from issuance
-}
-```
+### 4.2 Five solution directions known from BoJ / BIS / ECB CBDC research
 
-The coupon is encoded as a QR shown in the citizen mobile UI and printed
-on the back of paper notice (老若男女に対応するため).
+| ID | Approach | Examples |
+|----|----------|----------|
+| A | SE-embedded prepaid (Felica/Suica) | BoJ Phase 2 Pilot (2023-24); Suica 30-year operation |
+| B | 2-tier wallet (smartphone + IC card) | Banque de France; BoJ CBDC Forum 2023 sub-WG |
+| C | Time-limited offline credit | ECB Digital Euro pilot; Visa/Mastercard floor limit |
+| D | Hash-chain ticket | BIS Project Polaris (Riksbank/BIS) |
+| E | Government endpoint terminal | 311 SDF cash distribution; LGU evacuation centers |
 
-During the disaster:
-1. Retailer POS scans the QR offline.
-2. POS verifies the ECDSA signature locally against the cached governor public key.
-3. POS checks its local SQLite for prior `(pid, monthIndex)` redemption.
-4. POS dispenses goods, prints a paper receipt, and queues the redemption.
+### 4.3 Two designs for two countries
 
-After recovery:
-5. POS submits the queued batch to `PBMOfflineFallback.redeemBatch()`.
-6. The contract re-verifies signatures, prevents double-consumption via
-   the `consumed[pid][monthIndex]` mapping, and pays out JPYC to the store.
+JPN-PBM proposes **two CP-6 v2 designs**, optimized for the local infrastructure and disaster characteristics of each country.
 
-### 4.3 Why this is a world first
+#### 4.3.1 Japan v2 — A + E hybrid (Felica SE + shelter terminal)
 
-To our knowledge, no operating municipal subsidy system anywhere has an
-**equivalent end-to-end offline-online reconciliation path with cryptographic
-non-repudiation**. Singapore's MAS PBM trial (2023–2025) and the EU Digital
-Euro pilot do not address disaster-grade offline operation; both assume a
-working network.
+See [`docs/cp6-offline-fallback-v2-jp.md`](./cp6-offline-fallback-v2-jp.md) for full spec.
 
-This positions JPN-PBM not just as a Tokyo product but as a reference design
-for Japan's broader disaster-prep policy, and as a contribution to the
-**OECD Blockchain Policy Forum / BIS Agorá / MAS Project Orchid** discourse.
+| Layer | Component |
+|-------|-----------|
+| **Layer A** | MyNumber card Felica SE — pre-stage monthly offline allowance, monotonic counter for tamper resistance |
+| **Layer E** | Government tablet at evacuation centers — generator + Starlink mini + NFC reader |
+| **Layer paper** | Secondary fallback for SE-cardless citizens (door-to-door by welfare officers) |
+
+**Why this works for Japan**: MyNumber Felica is already universal (90%+ penetration), eliminating new hardware deployment. Evacuation centers (15,000 nationwide) become PBM endpoints, justified by shared use with health-insurance / certificate-issuance terminals.
+
+#### 4.3.2 Philippines v2 — Disaster Lista (DL) Protocol
+
+See [`docs/cp6-offline-fallback-v2-ph.md`](./cp6-offline-fallback-v2-ph.md) for full spec.
+
+| Layer | Component |
+|-------|-----------|
+| **Layer 1** | Laminated paper voucher — opt-in, typhoon-season-only, household-unit (with photo) |
+| **Layer 2** | Disaster Lista — sari-sari informal credit, opt-in, NDRRMC Code Red activation only |
+| **Layer 3** | Barangay + Red Cross — 3-tier delegated authority (captain → kagawad → tanod), PRC volunteer witness mandatory |
+
+**Why this works for the Philippines**: There is no SE infrastructure. PhilSys ID is paper-based. But Filipino bayanihan / lista culture is a working informal-trust infrastructure. The DL Protocol formalizes that culture without overriding it.
+
+**Yolanda-class (Cat 5+) exception**: When typhoon intensity exceeds the DL Protocol's tolerance (sari-sari themselves destroyed), CP-6 yields to direct national-disaster distribution (NDRRMC + AFP + PRC), and unspent monthly allowances roll over to the next month at no loss to recipients.
+
+### 4.4 Honest framing — what is NOT a "world first"
+
+The v1 whitepaper claimed "world first end-to-end offline-online reconciliation." That claim is withdrawn. Reality:
+
+- **Indonesia BPNT** has had IC-card-based subsidy distribution since 2017, including disaster operation.
+- **India PDS** has Aadhaar biometric + ePOS with paper fallback during disasters.
+- **Brazil Bolsa Familia / Auxilio Brasil** uses Caixa Econômica's mobile branches in disaster zones.
+
+**What JPN-PBM v2 contributes**:
+- A **two-country, codebase-shared** reference design (Japan + Philippines)
+- **Honest accounting** of the trade-offs: Japan = hardware-mechanical; Philippines = community-operational
+- The **multi-agent design protocol** (Strategy Meetings #1–#17) that produced these designs and is itself reusable
+
+This is a contribution to **OECD Blockchain Policy Forum / BIS Agorá / MAS Project Orchid** discourse — but as a *disciplined twin-pilot reference*, not a "world first" boast.
 
 ---
 

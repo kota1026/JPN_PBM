@@ -113,7 +113,7 @@ The **acceptance criteria** for any fork.
 
 ---
 
-## ★ World first: CP-6 disaster fallback
+## ★ Disaster fallback (CP-6 v2) — two-country, codebase-shared
 
 **Threat model**: a 7.0-magnitude inland earthquake (~70% probability within 30 years) may disable mobile networks for 3–14 days.
 
