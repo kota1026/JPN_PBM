@@ -1,0 +1,746 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JPN-PBM · Auto Demo (5 min)</title>
+<link rel="stylesheet" href="/ui/styles.css">
+<style>
+  /* ============ プレイヤー シェル ============ */
+  body { background: #0a0d12; color: #e6e8ee; min-height: 100vh; overflow: hidden;
+    font-family: -apple-system, "Hiragino Sans", "Yu Gothic", sans-serif; }
+  #demo-shell { display: grid; grid-template-rows: auto 1fr auto; height: 100vh; }
+  #demo-progress { background: #1a2030; padding: 10px 16px;
+    display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #2a3142; }
+  #demo-progress .dot { width: 8px; height: 8px; border-radius: 50%; background: #2a3142; transition: 0.3s; }
+  #demo-progress .dot.done { background: var(--tokyo-green); }
+  #demo-progress .dot.cur { background: var(--tokyo-yellow); box-shadow: 0 0 0 4px rgba(248,181,0,0.2); }
+  #demo-progress .label { font-size: 12px; color: #8e96a3; flex: 1; }
+  #demo-progress .label b { color: #fff; }
+  #demo-progress .timer { font-size: 12px; color: #8e96a3; font-variant-numeric: tabular-nums; }
+  #demo-progress .lang-toggle { display: flex; gap: 4px; }
+  #demo-progress .lang-toggle a { padding: 3px 8px; font-size: 11px; color: #8e96a3;
+    border: 1px solid #2a3142; border-radius: 4px; cursor: pointer; user-select: none; }
+  #demo-progress .lang-toggle a.active { background: var(--tokyo-navy); color: #fff; border-color: var(--tokyo-navy); }
+
+  #demo-stage { position: relative; overflow: hidden;
+    background: linear-gradient(180deg, #0a0d12 0%, #131826 100%); }
+  .scene { position: absolute; inset: 0; padding: 30px 40px; opacity: 0;
+    transform: translateY(8px); transition: opacity .5s, transform .5s;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .scene.active { opacity: 1; transform: translateY(0); }
+
+  .scene .act-label { font-size: 11px; color: var(--tokyo-yellow); letter-spacing: 0.1em;
+    text-transform: uppercase; margin-bottom: 8px; font-weight: 700; }
+  .scene h1 { font-size: 26px; margin: 0 0 14px; color: #fff; max-width: 800px; text-align: center; }
+  .scene .mock { background: white; color: var(--ink); border-radius: var(--r-lg);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4); padding: 20px 24px; max-width: 720px; width: 100%;
+    margin-bottom: 14px; position: relative; }
+  .scene .mock h3 { margin: 0 0 8px; font-size: 16px; color: var(--tokyo-navy); }
+  .scene .mock .row { display: flex; gap: 8px; align-items: center; padding: 6px 0; font-size: 13px; }
+  .scene .mock .row.kv { justify-content: space-between; border-bottom: 1px dashed var(--line); }
+  .scene .mock .row.kv b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .scene .mock .badge { padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: 600; }
+  .scene .mock .badge.green { background: var(--tokyo-green-50); color: var(--tokyo-green-dark); }
+  .scene .mock .badge.gray  { background: #eef0f4; color: #6b7280; }
+  .scene .mock .badge.red   { background: #fce8ea; color: var(--tokyo-red); }
+  .scene .mock .badge.yellow{ background: #fff5d4; color: #8a6300; }
+
+  /* ハイライト リング (scene の特定要素を強調) */
+  .pulse {
+    box-shadow: 0 0 0 0 rgba(248,181,0,0.6);
+    animation: pulse 1.4s ease-out infinite;
+    border-radius: var(--r-sm);
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(248,181,0,0.6); }
+    70% { box-shadow: 0 0 0 12px rgba(248,181,0,0); }
+    100% { box-shadow: 0 0 0 0 rgba(248,181,0,0); }
+  }
+
+  /* QR モック */
+  .qr-mock { width: 140px; height: 140px; background:
+    linear-gradient(45deg, #000 25%, transparent 25%) 0 0 / 12px 12px,
+    linear-gradient(-45deg, #000 25%, transparent 25%) 0 6px / 12px 12px,
+    linear-gradient(45deg, transparent 75%, #000 75%) 6px -6px / 12px 12px,
+    linear-gradient(-45deg, transparent 75%, #000 75%) -6px 0px / 12px 12px,
+    white;
+    border: 8px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    margin: 12px auto; }
+
+  .scene .narration {
+    background: rgba(255,255,255,0.06); border-left: 3px solid var(--tokyo-yellow);
+    padding: 14px 18px; max-width: 720px; width: 100%; border-radius: var(--r-sm);
+    font-size: 14px; line-height: 1.6; color: #e6e8ee; }
+  .scene .narration .speaker { font-size: 11px; color: var(--tokyo-yellow);
+    text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+
+  /* チェーン アニメーション */
+  .chain-flow { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    max-width: 720px; width: 100%; margin: 8px 0; }
+  .chain-flow .node { background: #1a2030; padding: 10px 12px;
+    border-radius: var(--r-sm); border: 1px solid #2a3142; text-align: center;
+    font-size: 12px; }
+  .chain-flow .node.active { border-color: var(--tokyo-yellow); color: var(--tokyo-yellow); }
+  .chain-flow .node b { display: block; font-size: 14px; color: #fff; margin-bottom: 2px; }
+
+  /* コントローラー */
+  #demo-controls { background: #1a2030; padding: 12px 16px;
+    display: flex; align-items: center; gap: 8px; border-top: 1px solid #2a3142; }
+  #demo-controls button { background: #2a3142; border: 1px solid #3a4152;
+    color: #fff; padding: 8px 16px; border-radius: var(--r-sm);
+    font-size: 13px; cursor: pointer; transition: 0.15s; }
+  #demo-controls button:hover { background: #3a4152; }
+  #demo-controls button.primary { background: var(--tokyo-navy); border-color: var(--tokyo-navy); }
+  #demo-controls .grow { flex: 1; }
+  #demo-controls .scene-label { font-size: 12px; color: #8e96a3; }
+  #demo-controls .scene-label b { color: #fff; }
+
+  /* 表 (Manila マニラ サリサリ) */
+  table.demo-cart { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.demo-cart th, table.demo-cart td { padding: 4px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+  table.demo-cart th { background: #f8f9fb; color: var(--ink-sub); font-weight: 500; font-size: 11px; }
+  table.demo-cart .num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.demo-cart .total { background: #fff8db; font-weight: 600; }
+
+  /* 言語別 */
+  body[data-lang="en"] [data-lang="jp"], body[data-lang="en"] [data-lang="tl"] { display: none; }
+  body[data-lang="jp"] [data-lang="en"], body[data-lang="jp"] [data-lang="tl"] { display: none; }
+  body[data-lang="tl"] [data-lang="jp"], body[data-lang="tl"] [data-lang="en"] { display: none; }
+
+  /* 終了画面 */
+  .scene.final { background: linear-gradient(135deg, #0E419A 0%, #00A040 100%); }
+  .scene.final h1 { font-size: 32px; margin-bottom: 8px; }
+  .scene.final .cta { background: rgba(0,0,0,0.3); border-radius: var(--r-md);
+    padding: 16px 24px; font-size: 16px; max-width: 600px; }
+  .scene.final code { background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 3px; color: #fff; }
+
+  /* ホスト向け説明 (操作不要) */
+  .helper-tip { position: absolute; top: 14px; right: 16px;
+    background: rgba(0,0,0,0.5); color: #ccc; padding: 4px 8px; border-radius: 3px;
+    font-size: 11px; }
+</style>
+</head>
+<body data-lang="jp">
+<div id="demo-shell">
+
+<div id="demo-progress">
+  <div class="dots"></div>
+  <div class="label">
+    <span data-lang="jp">▶ 自動再生中:</span>
+    <span data-lang="en">▶ Auto-playing:</span>
+    <span data-lang="tl">▶ Awtomatikong nagpapatugtog:</span>
+    <b id="actLabel">…</b>
+  </div>
+  <span class="timer"><span id="elapsed">0:00</span> / <span id="total">5:00</span></span>
+  <div class="lang-toggle">
+    <a data-set-lang="jp" class="active">日本語</a>
+    <a data-set-lang="en">English</a>
+    <a data-set-lang="tl">Tagalog</a>
+  </div>
+</div>
+
+<div id="demo-stage"><!-- scenes injected here --></div>
+
+<div id="demo-controls">
+  <button id="btn-restart" title="Restart">⟲</button>
+  <button id="btn-prev" title="Previous">⏮</button>
+  <button id="btn-pause" class="primary" title="Pause/Play">⏸ <span data-lang="jp">一時停止</span><span data-lang="en">Pause</span><span data-lang="tl">I-pause</span></button>
+  <button id="btn-next" title="Next">⏭</button>
+  <span class="scene-label grow">
+    <span data-lang="jp">シーン</span>
+    <span data-lang="en">Scene</span>
+    <span data-lang="tl">Eksena</span>
+    <b id="sceneIdx">1</b> / <b id="sceneTotal">14</b>
+    — <span id="sceneTitle">…</span>
+  </span>
+  <a href="/ui/index.html" target="_blank" style="text-decoration: none">
+    <button>
+      <span data-lang="jp">本物のアプリを開く ↗</span>
+      <span data-lang="en">Open real app ↗</span>
+      <span data-lang="tl">Buksan ang totoo ↗</span>
+    </button>
+  </a>
+</div>
+
+</div>
+
+<script>
+/* ============================================================
+   シーンデータ (14 シーン × 4 幕 = 約 5 分)
+   ============================================================ */
+
+const T = {
+  // 共通文字列 (act ラベル)
+  act_tokyo_citizen:   { jp: "第1幕: 東京 住民",    en: "Act 1: Tokyo Citizen",      tl: "Yugto 1: Citizen Tokyo" },
+  act_tokyo_retailer:  { jp: "第2幕: 加盟店レジ",   en: "Act 2: Retailer POS",       tl: "Yugto 2: POS sa Tindahan" },
+  act_disaster:        { jp: "第3幕: 災害時 (CP-6)", en: "Act 3: Disaster (CP-6)",   tl: "Yugto 3: Sakuna (CP-6)" },
+  act_manila:          { jp: "第4幕: マニラ サリサリ", en: "Act 4: Manila Sari-Sari",  tl: "Yugto 4: Sari-sari sa Maynila" },
+};
+
+const scenes = [
+  // ========================= イントロ =========================
+  {
+    id: "intro", act: "tokyo_citizen", duration: 12,
+    title: { jp: "JPN-PBM ─ 5 分自動デモ", en: "JPN-PBM — 5 min auto demo", tl: "JPN-PBM — 5 minutong demo" },
+    render: () => `
+      <div class="act-label" data-lang="jp">JPN-PBM デモ</div>
+      <div class="act-label" data-lang="en">JPN-PBM DEMO</div>
+      <div class="act-label" data-lang="tl">JPN-PBM DEMO</div>
+      <h1 data-lang="jp">東京の助成金を、目的どおりに使えるお金へ。</h1>
+      <h1 data-lang="en">Programmable subsidy infrastructure for Tokyo &amp; Manila.</h1>
+      <h1 data-lang="tl">Programmable subsidy para sa Tokyo at Maynila.</h1>
+      <div class="mock" style="text-align:center;background:linear-gradient(135deg,#e8edf7,#fff)">
+        <h3 style="margin-top:8px">★ 4 役 / 14 シーン / 5 分</h3>
+        <div class="row" style="justify-content:center; gap: 24px">
+          <div style="text-align:center">
+            <div style="font-size:30px">🇯🇵</div>
+            <div data-lang="jp">東京 (JPYC)</div>
+            <div data-lang="en">Tokyo (JPYC)</div>
+            <div data-lang="tl">Tokyo (JPYC)</div>
+          </div>
+          <div style="font-size:24px;color:var(--ink-mute)">+</div>
+          <div style="text-align:center">
+            <div style="font-size:30px">🇵🇭</div>
+            <div data-lang="jp">マニラ (PHPC)</div>
+            <div data-lang="en">Manila (PHPC)</div>
+            <div data-lang="tl">Maynila (PHPC)</div>
+          </div>
+        </div>
+      </div>`,
+    narration: {
+      jp: "JPN-PBM は、東京とマニラの両方で動く Programmable Subsidy 基盤です。これから 5 分、住民・加盟店・都・災害時の 4 役を 通しで見ていきます。",
+      en: "JPN-PBM is a programmable subsidy infrastructure that runs on both Tokyo and Manila. In the next 5 minutes, we walk through citizen, retailer, treasury, and disaster scenarios.",
+      tl: "Ang JPN-PBM ay programmable subsidy infrastructure para sa Tokyo at Maynila. Sa susunod na 5 minuto, ipakikita namin ang 4 na sitwasyon.",
+    },
+  },
+
+  // ========================= 第1幕: 住民 =========================
+  {
+    id: "tokyo_login", act: "tokyo_citizen", duration: 18,
+    title: { jp: "マイナ認証 (HMAC で擬似 ID 化)", en: "MyNumber auth (HMAC pseudonymization)", tl: "MyNumber auth" },
+    render: () => `
+      <div class="act-label">${T.act_tokyo_citizen.jp} / ${T.act_tokyo_citizen.en}</div>
+      <h1 data-lang="jp">① 受給者がマイナンバーカードで認証</h1>
+      <h1 data-lang="en">① Citizen authenticates with MyNumber card</h1>
+      <h1 data-lang="tl">① Citizen authenticates with MyNumber card</h1>
+      <div class="mock">
+        <h3>住民マイページ — /ui/citizen.html</h3>
+        <div class="row kv"><span data-lang="jp">マイナンバー (擬似)</span><span data-lang="en">MyNumber (mock)</span><span data-lang="tl">MyNumber (mock)</span><b>MN-0001</b></div>
+        <div class="row kv"><span data-lang="jp">氏名</span><span data-lang="en">Name</span><span data-lang="tl">Pangalan</span><b>山田 太郎</b></div>
+        <div class="row kv"><span data-lang="jp">区</span><span data-lang="en">Ward</span><span data-lang="tl">Ward</span><b>江東区</b></div>
+        <div class="row kv"><span data-lang="jp">生年月日</span><span data-lang="en">DoB</span><span data-lang="tl">DoB</span><b>1985-04-12</b></div>
+        <div style="margin-top:12px;padding:10px;background:var(--tokyo-green-50);border-radius:6px" class="pulse">
+          <div style="font-size:11px;color:var(--tokyo-green-dark)">HMAC PID (元情報は復元不可):</div>
+          <code style="font-size:11px">badf24c3d83ec0a89f8d6ef47b21c5fe...</code>
+        </div>
+      </div>`,
+    narration: {
+      jp: "マイナンバーカードの 4 情報は HMAC-SHA256 で擬似 ID 化され、以降のシステムでは pid のみが使われます。本体のマイナンバーは backend にも contract にも保存されません。個情法 16 条準拠です。",
+      en: "MyNumber 4-fact data is HMAC-SHA256 pseudonymized at the boundary; downstream sees only the pid. The raw MyNumber never enters the backend or contract. Compliant with PIPA Article 16.",
+      tl: "Ang MyNumber data ay HMAC-pseudonymized sa boundary; ang raw MyNumber ay hindi nakakaabot sa backend.",
+    },
+  },
+  {
+    id: "tokyo_eligible", act: "tokyo_citizen", duration: 18,
+    title: { jp: "受給可能なプログラム自動表示", en: "Eligible programs auto-displayed", tl: "Eligible programs auto-display" },
+    render: () => `
+      <div class="act-label">${T.act_tokyo_citizen.jp}</div>
+      <h1 data-lang="jp">② 4 情報から eligibility を自動判定</h1>
+      <h1 data-lang="en">② Eligibility auto-decided from 4 facts</h1>
+      <h1 data-lang="tl">② Auto-decide eligibility</h1>
+      <div class="mock">
+        <h3 data-lang="jp">受給可能なプログラム</h3>
+        <h3 data-lang="en">Eligible programs</h3>
+        <div style="border:1px solid var(--line); border-radius:6px; padding:10px; margin:6px 0" class="pulse">
+          <div style="display:flex;justify-content:space-between"><b>江東区 こども・くらし応援 PBM 2026</b><span class="badge green">受給可能</span></div>
+          <div style="font-size:12px;color:var(--ink-sub);margin-top:4px">助成 30% / 上限 ¥60,000 / 残予算 ¥58.4M</div>
+        </div>
+        <div style="border:1px solid var(--line); border-radius:6px; padding:10px; margin:6px 0">
+          <div style="display:flex;justify-content:space-between"><b>江東区 防災備蓄ローリング助成 2026</b><span class="badge green">受給可能</span></div>
+          <div style="font-size:12px;color:var(--ink-sub);margin-top:4px">助成 50% / 上限 ¥10,000 / 多年度 ¥150M</div>
+        </div>
+        <div style="border:1px solid var(--line); border-radius:6px; padding:10px; margin:6px 0; opacity:.4">
+          <div style="display:flex;justify-content:space-between"><b>シニア向け健康促進 (年齢要件外)</b><span class="badge gray">対象外</span></div>
+          <div style="font-size:12px;color:var(--ink-sub);margin-top:4px" data-lang="jp">対象年齢 65 歳以上</div>
+        </div>
+      </div>`,
+    narration: {
+      jp: "区・年齢・性別から自動的に対象プログラムだけ表示されます。シニア向けは年齢要件外なので自動除外。受給者は何が対象かを覚える必要がありません。",
+      en: "Programs are auto-filtered by ward / age / gender. Senior programs are excluded by age. Citizens don't need to remember what they qualify for.",
+      tl: "Auto-filter ang programa batay sa ward / edad / kasarian. Hindi kailangang isaulo ng citizen kung saan sila qualified.",
+    },
+  },
+  {
+    id: "tokyo_pbm_qr", act: "tokyo_citizen", duration: 16,
+    title: { jp: "PBM トークン申請 → QR 生成", en: "Claim PBM → QR generated", tl: "Claim PBM → QR" },
+    render: () => `
+      <div class="act-label">${T.act_tokyo_citizen.jp}</div>
+      <h1 data-lang="jp">③ ボタン 1 つで PBM 申請 → 加盟店で見せる QR</h1>
+      <h1 data-lang="en">③ One-click claim → QR for retailer scan</h1>
+      <h1 data-lang="tl">③ One-click claim → QR sa retailer</h1>
+      <div class="mock" style="text-align:center">
+        <h3 data-lang="jp">PBM 発行完了</h3>
+        <h3 data-lang="en">PBM issued</h3>
+        <div class="row" style="justify-content:center;gap:24px">
+          <div>
+            <div class="qr-mock"></div>
+            <div style="font-size:11px;color:var(--ink-sub)">citizen QR — POS scan</div>
+          </div>
+          <div style="text-align:left;font-size:13px">
+            <div class="row kv" style="border:none"><span data-lang="jp">枠</span><span data-lang="en">Allowance</span><span data-lang="tl">Allowance</span><b>¥60,000</b></div>
+            <div class="row kv" style="border:none"><span data-lang="jp">プログラム</span><span data-lang="en">Program</span><b>こども・くらし</b></div>
+            <div class="row kv" style="border:none"><span data-lang="jp">期限</span><span data-lang="en">Expires</span><b>2026-12-31</b></div>
+            <div class="row kv" style="border:none"><span data-lang="jp">残枠</span><span data-lang="en">Remaining</span><b style="color:var(--tokyo-green)">¥60,000</b></div>
+          </div>
+        </div>
+      </div>`,
+    narration: {
+      jp: "申請ボタンを押すと PBM トークン (= 助成金枠) がウォレットに発行されます。同時に加盟店レジで使う QR コードが生成されます。発行と同時に予算は contract にロックされ、不正な発行は不可能。",
+      en: "One click issues a PBM token to the wallet, with a QR ready for retailer scan. The budget is locked on the contract at issuance — no unauthorized issuance possible.",
+      tl: "Sa pagpindot, gagawa ng PBM token + QR. Naka-lock sa contract ang budget — walang unauthorized issuance.",
+    },
+  },
+
+  // ========================= 第2幕: 加盟店 =========================
+  {
+    id: "retailer_scan", act: "tokyo_retailer", duration: 18,
+    title: { jp: "POS が住民 QR + 商品 JAN を読む", en: "POS scans citizen QR + product JAN", tl: "POS scan QR" },
+    render: () => `
+      <div class="act-label">${T.act_tokyo_retailer.jp}</div>
+      <h1 data-lang="jp">④ 加盟店レジ: 商品 JAN をスキャン</h1>
+      <h1 data-lang="en">④ Retailer POS: scan product JAN</h1>
+      <h1 data-lang="tl">④ POS: i-scan ang product JAN</h1>
+      <div class="mock">
+        <h3>retailer.html — POS 画面</h3>
+        <div class="row kv"><span>住民</span><b style="font-size:11px">badf24c3...</b><span class="badge green">認証済</span></div>
+        <div class="row kv"><span>JAN コード</span><b>4902705116542</b></div>
+        <div class="row kv"><span>商品</span><b>明治 ほほえみ 800g (粉ミルク)</b></div>
+        <div class="row kv"><span>カテゴリ</span><span>food.baby</span><span class="badge green">対象</span></div>
+        <div class="row kv"><span>数量</span><b>×1</b></div>
+        <div class="row kv"><span>価格</span><b>¥2,480</b></div>
+        <div style="background:var(--tokyo-green-50); padding:12px; border-radius:6px; margin-top:8px" class="pulse">
+          <div style="display:flex;justify-content:space-between;font-size:13px">
+            <span data-lang="jp">補助率 30% → 自動適用</span>
+            <span data-lang="en">30% subsidy auto-applied</span>
+            <b style="color:var(--tokyo-green-dark);font-size:18px">−¥744</b>
+          </div>
+        </div>
+      </div>`,
+    narration: {
+      jp: "加盟店 POS が住民 QR と商品 JAN をスキャンすると、5 段の require (citizen ∧ store ∧ JAN ∧ period ∧ cap) で eligibility がオンチェーン強制。対象品なら助成率に応じて自動補助、対象外品なら 0 円。店員の判断は介在しません。",
+      en: "Five on-chain require checks (citizen ∧ store ∧ JAN ∧ period ∧ cap) gate the spend. Eligible items get auto-subsidy at the program rate. Non-eligible items get nothing. No clerk discretion.",
+      tl: "5 on-chain require checks ang gumating sa spend. Eligible items get auto-subsidy. Walang clerk discretion.",
+    },
+  },
+  {
+    id: "chain_flow", act: "tokyo_retailer", duration: 22,
+    title: { jp: "オンチェーン spend → JPYC 即時清算", en: "On-chain spend → instant JPYC settlement", tl: "On-chain spend" },
+    render: () => `
+      <div class="act-label">${T.act_tokyo_retailer.jp}</div>
+      <h1 data-lang="jp">⑤ on-chain で 5 段検証 → JPYC 即時転送</h1>
+      <h1 data-lang="en">⑤ 5-way on-chain verify → instant JPYC transfer</h1>
+      <h1 data-lang="tl">⑤ On-chain verify → instant transfer</h1>
+      <div class="chain-flow">
+        <div class="node">${'<b>citizen</b>'}<span data-lang="jp">eligible?</span><span data-lang="en">eligible?</span><span data-lang="tl">eligible?</span><br>✓</div>
+        <div class="node">${'<b>store</b>'}<span data-lang="jp">approved?</span><span data-lang="en">approved?</span><span data-lang="tl">approved?</span><br>✓</div>
+        <div class="node">${'<b>JAN</b>'}<span data-lang="jp">in eligible_jans?</span><span data-lang="en">in eligible_jans?</span><span data-lang="tl">eligible?</span><br>✓</div>
+        <div class="node">${'<b>period</b>'}<span data-lang="jp">in start..end?</span><span data-lang="en">in start..end?</span><span data-lang="tl">in period?</span><br>✓</div>
+        <div class="node">${'<b>cap</b>'}<span data-lang="jp">remaining?</span><span data-lang="en">remaining?</span><span data-lang="tl">remaining?</span><br>✓</div>
+        <div class="node active">${'<b>spend()</b>'}<span data-lang="jp">⚡ JPYC 転送</span><span data-lang="en">⚡ JPYC transfer</span><span data-lang="tl">⚡ JPYC transfer</span></div>
+      </div>
+      <div class="mock" style="margin-top: 8px">
+        <h3 data-lang="jp">EBPM ダッシュボード (k-匿名集計)</h3>
+        <h3 data-lang="en">EBPM Dashboard (k-anonymous)</h3>
+        <div class="row kv"><span data-lang="jp">本日の利用</span><span data-lang="en">Today's redemptions</span><b>342 件</b></div>
+        <div class="row kv"><span data-lang="jp">補助総額</span><span data-lang="en">Subsidy delivered</span><b>¥2.84M</b></div>
+        <div class="row kv"><span data-lang="jp">対象外試行 (CP-2 ブロック)</span><span data-lang="en">CP-2 blocked attempts</span><b style="color:var(--tokyo-red)">7 件</b></div>
+        <div class="row kv"><span data-lang="jp">k-匿名性</span><span data-lang="en">k-anonymity</span><b>k=5 強制</b></div>
+      </div>`,
+    narration: {
+      jp: "spend() トランザクションは 5 つの require を通過し、補助分の JPYC が トレジャリーから加盟店に即時転送されます。Spent イベントが emit され、EBPM ダッシュボードがリアルタイム更新。k=5 を機械的に強制するので、個人特定は構造的に不可能です。",
+      en: "The spend() transaction passes 5 requires, and JPYC for the subsidy moves from treasury to retailer instantly. A Spent event fires; the EBPM dashboard updates in real time. k=5 is machine-enforced, making re-identification structurally impossible.",
+      tl: "Pumasa sa 5 requires, ang JPYC ay napunta agad sa retailer. Real-time ang EBPM dashboard.",
+    },
+  },
+
+  // ========================= 第3幕: 災害時 (CP-6) =========================
+  {
+    id: "cp6_pre", act: "disaster", duration: 16,
+    title: { jp: "平時に災害用 QR を事前配布", en: "Pre-issue disaster QR in peacetime", tl: "Mag-issue ng disaster QR" },
+    render: () => `
+      <div class="act-label">${T.act_disaster.jp} ─ 世界初設計</div>
+      <h1 data-lang="jp">⑥ 平時: 都が ECDSA で月次 QR を住民へ事前配布</h1>
+      <h1 data-lang="en">⑥ Peacetime: TMG pre-signs monthly QR per citizen</h1>
+      <h1 data-lang="tl">⑥ Peacetime: pre-sign ng QR</h1>
+      <div class="mock">
+        <h3 style="color:var(--tokyo-red)" data-lang="jp">★ CP-6 ─ 災害時オフラインフォールバック</h3>
+        <h3 style="color:var(--tokyo-red)" data-lang="en">★ CP-6 ─ Disaster offline fallback (world first)</h3>
+        <div style="display:flex; gap:18px; align-items:center;">
+          <div class="qr-mock"></div>
+          <div style="font-size:13px">
+            <div class="row kv" style="border:none"><span>programId</span><span style="font-size:11px">prog-koto-disaster-pack-2026</span></div>
+            <div class="row kv" style="border:none"><span>pid</span><span style="font-size:11px">badf24c3...</span></div>
+            <div class="row kv" style="border:none"><span>monthIndex</span><b>202608</b></div>
+            <div class="row kv" style="border:none"><span>capJpy</span><b>¥10,000</b></div>
+            <div class="row kv" style="border:none"><span>expiresAt</span><b>2026-09-30</b></div>
+            <div class="row kv" style="border:none">
+              <span data-lang="jp">governor 署名</span>
+              <span data-lang="en">governor sig</span>
+              <span class="badge green">ECDSA secp256k1</span>
+            </div>
+          </div>
+        </div>
+      </div>`,
+    narration: {
+      jp: "平時のうちに、都が住民ごとに月次 QR を ECDSA で事前署名・配布します。スマホ画面と紙印刷の両方で配るのがポイント ─ 災害時にスマホが壊れても、紙が手元にあれば動きます。",
+      en: "In peacetime, TMG pre-signs and distributes monthly QR per citizen with ECDSA. Crucially, both smartphone and paper copies are distributed — even if smartphones fail, the paper still works.",
+      tl: "Sa peacetime, pre-sign ng TMG ang QR. Phone at papel parehong gamit — kung sira ang phone, gamitin ang papel.",
+    },
+  },
+  {
+    id: "cp6_offline", act: "disaster", duration: 22,
+    title: { jp: "ネット遮断中、POS でローカル検証", en: "Network down → local verify at POS", tl: "Walang network → local verify" },
+    render: () => `
+      <div class="act-label">${T.act_disaster.jp}</div>
+      <h1 data-lang="jp">⑦ 首都直下地震発生・ネット遮断</h1>
+      <h1 data-lang="en">⑦ Earthquake — network down</h1>
+      <h1 data-lang="tl">⑦ Lindol — walang network</h1>
+      <div class="mock">
+        <h3 style="color:var(--tokyo-red)">⚠ <span data-lang="jp">ネット切断中</span><span data-lang="en">offline</span><span data-lang="tl">offline</span></h3>
+        <div style="font-size:13px">
+          <div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line)">
+            <span data-lang="jp">QR スキャン受領</span>
+            <span data-lang="en">QR scanned</span>
+            <span class="badge green">✓</span>
+          </div>
+          <div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line)">
+            <span data-lang="jp">公開鍵で署名検証 (オフライン)</span>
+            <span data-lang="en">Sig verify with cached pubkey (offline)</span>
+            <span class="badge green">✓</span>
+          </div>
+          <div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line)">
+            <span data-lang="jp">cap ¥10,000 残量チェック</span>
+            <span data-lang="en">cap ¥10,000 remaining check</span>
+            <span class="badge green">✓ ¥7,400 残</span>
+          </div>
+          <div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line)">
+            <span data-lang="jp">期限内 (+30 day grace)</span>
+            <span data-lang="en">expiresAt + 30d grace</span>
+            <span class="badge green">✓</span>
+          </div>
+          <div class="row pulse" style="background:var(--tokyo-yellow);padding:8px;border-radius:4px;margin-top:8px">
+            <span data-lang="jp">🍙 米 5kg + 水 6L 受給 → 紙レシート発行</span>
+            <span data-lang="en">🍙 5kg rice + 6L water → paper receipt</span>
+            <span data-lang="tl">🍙 bigas + tubig → resibo na papel</span>
+          </div>
+        </div>
+      </div>`,
+    narration: {
+      jp: "災害時、加盟店 POS は QR を読み取り、キャッシュ済の governor 公開鍵でローカル署名検証 + nonce 重複チェック + cap 残量確認を行います。すべてオフラインで完結。住民は その場で物資を受け取り、紙のレシートも併発行されます。世界中で、能登半島地震を経験した国でこの仕組みを持つ自治体はありません。",
+      en: "During disaster, the POS reads the QR, verifies the signature locally with the cached governor pubkey, checks nonce duplicates and remaining cap — all fully offline. Citizens receive supplies on the spot with a paper receipt. No municipality anywhere has an equivalent end-to-end offline-online reconciliation path.",
+      tl: "Sa sakuna, lokal na nagva-verify ang POS — fully offline. Tinatanggap agad ng citizen ang supplies + papel na resibo.",
+    },
+  },
+  {
+    id: "cp6_recovery", act: "disaster", duration: 18,
+    title: { jp: "ネット復旧後、batch で精算", en: "Network restored → batch settle", tl: "Network bumalik → batch settle" },
+    render: () => `
+      <div class="act-label">${T.act_disaster.jp}</div>
+      <h1 data-lang="jp">⑧ ネット復旧 → POS が batch を on-chain 提出</h1>
+      <h1 data-lang="en">⑧ Network restored → POS submits batch on-chain</h1>
+      <h1 data-lang="tl">⑧ Network bumalik → batch on-chain</h1>
+      <div class="mock">
+        <h3 data-lang="jp">PBMOfflineFallback.redeemBatch(items[])</h3>
+        <h3 data-lang="en">PBMOfflineFallback.redeemBatch(items[])</h3>
+        <div style="background:#1a2030;color:#e6e8ee;padding:12px;border-radius:6px;font-family:monospace;font-size:11px;line-height:1.6">
+          <div>require(approvedStores[msg.sender]);  <span style="color:var(--tokyo-green)">✓</span></div>
+          <div>for (item in items):</div>
+          <div>&nbsp;&nbsp;require(ecrecover(digest, sig) == governor);  <span style="color:var(--tokyo-green)">✓</span></div>
+          <div>&nbsp;&nbsp;require(consumed[pid][month] + amount &lt;= capJpy);  <span style="color:var(--tokyo-green)">✓</span></div>
+          <div>&nbsp;&nbsp;consumed[pid][month] += amount;</div>
+          <div>&nbsp;&nbsp;jpyc.transfer(msg.sender, amount);  <span style="color:var(--tokyo-yellow)">⚡</span></div>
+          <div>&nbsp;&nbsp;emit Redeemed(programId, pid, store, month, amount);</div>
+        </div>
+        <div class="row kv" style="margin-top:8px">
+          <span data-lang="jp">合計精算</span><span data-lang="en">Total settled</span><b>¥1.34M (143 redemptions)</b>
+        </div>
+      </div>`,
+    narration: {
+      jp: "ネット復旧後、POS が蓄積していた redemption batch を on-chain に提出。contract が再検証 (署名 + nonce + cap) を行い、JPYC を加盟店に送ります。consumed mapping で二重支給は構造的にゼロ。30 日 grace 期間つきで、複数回の災害でも対応可能。",
+      en: "After recovery, the POS submits the queued batch on-chain. The contract re-verifies signature, nonce, and cap, then transfers JPYC to the store. `consumed` mapping makes double-spend structurally zero. The 30-day grace period covers multi-event scenarios.",
+      tl: "Pagkatapos ng recovery, naisubmit ang batch on-chain. 30-day grace para sa multi-event.",
+    },
+  },
+
+  // ========================= 第4幕: マニラ サリサリ =========================
+  {
+    id: "manila_intro", act: "manila", duration: 14,
+    title: { jp: "PHPC + 4Ps + サリサリ (POS 不要)", en: "PHPC + 4Ps + sari-sari (no POS)", tl: "PHPC + 4Ps + sari-sari (walang POS)" },
+    render: () => `
+      <div class="act-label">${T.act_manila.jp}</div>
+      <h1 data-lang="jp">⑨ Manila ピボット ─ コードベース 99% 共通</h1>
+      <h1 data-lang="en">⑨ Manila pivot — 99% shared codebase</h1>
+      <h1 data-lang="tl">⑨ Manila pivot — 99% shared</h1>
+      <div class="mock" style="background:linear-gradient(135deg, #0038A8 0%, #FFFFFF 50%, #CE1126 100%); color: #fff;">
+        <h3 style="color:#fff" data-lang="jp">DSWD 4Ps PBM Pilot — Quezon City</h3>
+        <h3 style="color:#fff" data-lang="en">DSWD 4Ps PBM Pilot — Quezon City</h3>
+        <h3 style="color:#fff" data-lang="tl">DSWD 4Ps PBM Pilot — Quezon City</h3>
+        <div class="row kv" style="border-color:rgba(255,255,255,0.3)"><span data-lang="jp">対象世帯</span><span data-lang="en">Target households</span><span data-lang="tl">Target sambahayan</span><b style="color:#fff">4.4M</b></div>
+        <div class="row kv" style="border-color:rgba(255,255,255,0.3)"><span data-lang="jp">パイロット</span><span data-lang="en">Pilot</span><span data-lang="tl">Pilot</span><b style="color:#fff">5 households × 7 stores × 3 months</b></div>
+        <div class="row kv" style="border-color:rgba(255,255,255,0.3)"><span data-lang="jp">通貨</span><span data-lang="en">Token</span><span data-lang="tl">Token</span><b style="color:#fff">PHPC (BSP-approved 2024)</b></div>
+        <div class="row kv" style="border:none"><span data-lang="jp">災害頻度</span><span data-lang="en">Disaster frequency</span><span data-lang="tl">Sakuna</span><b style="color:var(--tokyo-yellow)">★ 台風 年 20+ 回</b></div>
+      </div>`,
+    narration: {
+      jp: "コードベースを 99% 流用してマニラ展開。対象は DSWD 4Ps の 440 万世帯。BSP 認可済の PHPC を使うので新規発行は不要。台風が年 20 回以上来るので、CP-6 災害時フォールバックが月単位で価値を発揮します。",
+      en: "Manila pilot reuses 99% of the codebase. Target: DSWD 4Ps with 4.4M households. PHPC is BSP-approved, so no new issuance is needed. With 20+ typhoons per year, CP-6 disaster fallback delivers monthly value.",
+      tl: "99% pareho ang codebase. 4.4M households target. PHPC ay BSP-approved. CP-6 ay buwanang gamit dahil sa 20+ bagyo bawat taon.",
+    },
+  },
+  {
+    id: "manila_scan", act: "manila", duration: 22,
+    title: { jp: "サリサリ: 受給者スマホでスキャン", en: "Sari-sari: smartphone scan", tl: "Sari-sari: smartphone scan" },
+    render: () => `
+      <div class="act-label">${T.act_manila.jp}</div>
+      <h1 data-lang="jp">⑩ サリサリには POS 不要、受給者スマホがスキャナ</h1>
+      <h1 data-lang="en">⑩ No POS at sari-sari — recipient smartphone scans</h1>
+      <h1 data-lang="tl">⑩ Walang POS — phone ng citizen ang scanner</h1>
+      <div class="mock">
+        <h3>frontend/ph/citizen.html</h3>
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <div style="flex:1">
+            <div class="row kv"><span data-lang="jp">店舗 QR Ph</span><span data-lang="en">Merchant QR Ph</span><span data-lang="tl">Merchant QR Ph</span><b>Aling Maria's Sari-sari</b></div>
+            <div class="row kv"><span>MCC</span><b>5411 (grocery)</b><span class="badge green">approved</span></div>
+            <div class="row kv"><span>CRC-16</span><span class="badge green">verified</span></div>
+          </div>
+        </div>
+        <table class="demo-cart" style="margin-top:8px">
+          <thead><tr><th>Item</th><th>Type</th><th class="num">Price</th><th>?</th><th class="num">Subsidy</th></tr></thead>
+          <tbody>
+            <tr><td>Bear Brand 300g</td><td><span class="badge gray">Barcode</span></td><td class="num">PHP 85.00</td><td><span class="badge green">✓</span></td><td class="num">PHP 51.00</td></tr>
+            <tr><td>Lucky Me ×2</td><td><span class="badge gray">Barcode</span></td><td class="num">PHP 24.00</td><td><span class="badge green">✓</span></td><td class="num">PHP 14.40</td></tr>
+            <tr><td data-lang="jp">米 1 cup</td><td data-lang="en">Rice 1 cup</td><td data-lang="tl">Bigas 1 cup</td><td><span class="badge yellow">Tingi</span></td><td class="num">PHP 15.00</td><td><span class="badge green">✓</span></td><td class="num">PHP 9.00</td></tr>
+            <tr><td>Marlboro 1</td><td><span class="badge gray">Barcode</span></td><td class="num">PHP 8.00</td><td><span class="badge red">✗</span></td><td class="num">—</td></tr>
+            <tr class="total"><td colspan="2">Total / Subsidy / Self-pay</td><td class="num">PHP 132.00</td><td>—</td><td class="num">PHP 74.40</td></tr>
+          </tbody>
+        </table>
+      </div>`,
+    narration: {
+      jp: "サリサリでは POS スキャナがないので、受給者が自分のスマホでバーコードをスキャンします。バーコード付き商品 (Bear Brand など) は厳格判定。米やシャンプーサシェ (tingi) は店の MCC が grocery 認定なら月次キャップ枠内で許可。Marlboro は MCC ブラックリストで自動拒否。",
+      en: "Sari-sari has no POS, so the recipient's smartphone scans barcodes. Barcoded items (Bear Brand etc.) get strict eligibility. Tingi/loose goods are allowed within a monthly no-barcode cap if the store MCC is grocery. Marlboro is auto-rejected by MCC blacklist.",
+      tl: "Walang POS sa sari-sari, smartphone ng citizen ang scanner. Tingi at loose goods ay allowed sa monthly cap. Tabako ay auto-block.",
+    },
+  },
+  {
+    id: "manila_pay", act: "manila", duration: 16,
+    title: { jp: "GCash QR Ph で決済 → PHPC 加盟店へ", en: "Pay via GCash QR Ph → PHPC to merchant", tl: "Bayad sa GCash → PHPC sa merchant" },
+    render: () => `
+      <div class="act-label">${T.act_manila.jp}</div>
+      <h1 data-lang="jp">⑪ GCash QR Ph で決済 → 補助金は PHPC で店舗へ</h1>
+      <h1 data-lang="en">⑪ Pay via GCash QR Ph → subsidy in PHPC to merchant</h1>
+      <h1 data-lang="tl">⑪ Bayad sa GCash → subsidy sa PHPC</h1>
+      <div class="mock">
+        <h3 data-lang="jp">決済内訳</h3>
+        <h3 data-lang="en">Payment breakdown</h3>
+        <h3 data-lang="tl">Bayad breakdown</h3>
+        <div style="background: var(--tokyo-green-50); padding:14px;border-radius:8px">
+          <div class="row kv"><span data-lang="jp">商品合計</span><span data-lang="en">Cart total</span><span data-lang="tl">Cart total</span><b>PHP 132.00</b></div>
+          <div class="row kv"><span data-lang="jp">4Ps 補助 (PHPC)</span><span data-lang="en">4Ps subsidy (PHPC)</span><span data-lang="tl">4Ps subsidy (PHPC)</span><b style="color:var(--tokyo-green-dark)">−PHP 74.40</b></div>
+          <div class="row kv pulse" style="border:none;font-size:16px;background:var(--tokyo-yellow);border-radius:4px;padding:6px"><span data-lang="jp">受給者の自己負担</span><span data-lang="en">You pay (cash/GCash)</span><span data-lang="tl">Babayaran mo</span><b>PHP 57.60</b></div>
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:var(--ink-sub)" data-lang="jp">
+          ✓ GCash QR Ph で自己負担分を merchant に支払い<br>
+          ✓ 補助金 ¥74.40 (PHPC) は PBM contract が merchant wallet に直接転送 (オンチェーン)
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:var(--ink-sub)" data-lang="en">
+          ✓ Self-pay via GCash QR Ph to merchant<br>
+          ✓ Subsidy PHP 74.40 (PHPC) flows from PBM contract → merchant wallet on-chain
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:var(--ink-sub)" data-lang="tl">
+          ✓ Self-pay sa GCash QR Ph<br>
+          ✓ Subsidy ay direktang sa merchant wallet via PBM contract
+        </div>
+      </div>`,
+    narration: {
+      jp: "受給者は自己負担分だけを GCash で merchant に支払い。補助金は PBM contract が merchant の PHPC wallet に直接転送します。merchant 側に新規ハードウェアは不要、既存の QR Ph ステッカーがあれば動きます。",
+      en: "The recipient pays only the self-pay portion via GCash. The subsidy goes from the PBM contract directly to the merchant's PHPC wallet. No new hardware for merchants — the existing QR Ph sticker is enough.",
+      tl: "Self-pay lang ang binabayad sa GCash. Subsidy ay direktang sa merchant. Walang bagong hardware na kailangan.",
+    },
+  },
+
+  // ========================= 終幕 =========================
+  {
+    id: "outro", act: "manila", duration: 14, final: true,
+    title: { jp: "クロージング", en: "Closing", tl: "Closing" },
+    render: () => `
+      <div class="act-label">JPN-PBM</div>
+      <h1 data-lang="jp">技術はサンドボックスで完成。<br>あとは「やる」という決定だけ。</h1>
+      <h1 data-lang="en">Built. Tested. Open.<br>The rest is real diplomacy.</h1>
+      <h1 data-lang="tl">Tapos na ang sandbox.<br>Kailangan na lang ng diplomasya.</h1>
+      <div class="cta">
+        <div data-lang="jp"><b>267 tests passed</b> · <b>40 of 44 audit checks ok</b> · <b>Apache 2.0</b></div>
+        <div data-lang="en"><b>267 tests passed</b> · <b>40 of 44 audit checks ok</b> · <b>Apache 2.0</b></div>
+        <div data-lang="tl"><b>267 tests passed</b> · <b>40 of 44 audit checks ok</b> · <b>Apache 2.0</b></div>
+        <div style="margin-top:10px"><code>github.com/kota1026/JPN_PBM</code></div>
+        <div style="margin-top:14px;font-size:13px">
+          <span data-lang="jp">▶ 下のボタンで本物のアプリを開けます。クリックで停止・巻き戻し可。</span>
+          <span data-lang="en">▶ Click the button below to open the real app. Pause/rewind anytime.</span>
+          <span data-lang="tl">▶ Pindutin ang button para sa totoong app.</span>
+        </div>
+      </div>`,
+    narration: {
+      jp: "267 のバックエンドテストが緑、Solidity 24 項目セルフ監査済、Apache 2.0 で完全オープン。あとは Founders' MoU と Polygon Mumbai の RPC 1 本があれば、来週から本番投入できます。ご清聴ありがとうございました。",
+      en: "267 backend tests passing, 24-item Solidity self-audit done, Apache 2.0 fully open. With a Founders' MoU and one Polygon Mumbai RPC URL, production launch is one week away. Thank you.",
+      tl: "267 tests pumasa, 24-item audit, Apache 2.0. Kailangan na lang ng MoU at RPC URL. Salamat.",
+    },
+  },
+];
+
+/* ============================================================
+   プレイヤー コントローラ
+   ============================================================ */
+
+const stage = document.getElementById('demo-stage');
+const dotsEl = document.querySelector('#demo-progress .dots');
+const elapsedEl = document.getElementById('elapsed');
+const totalEl = document.getElementById('total');
+const actLabelEl = document.getElementById('actLabel');
+const sceneIdxEl = document.getElementById('sceneIdx');
+const sceneTotalEl = document.getElementById('sceneTotal');
+const sceneTitleEl = document.getElementById('sceneTitle');
+const btnPause = document.getElementById('btn-pause');
+const btnNext = document.getElementById('btn-next');
+const btnPrev = document.getElementById('btn-prev');
+const btnRestart = document.getElementById('btn-restart');
+
+// scenes を stage に inject
+scenes.forEach((s, i) => {
+  const el = document.createElement('div');
+  el.className = 'scene' + (s.final ? ' final' : '');
+  el.dataset.scene = s.id;
+  el.innerHTML = s.render() + `
+    <div class="narration">
+      <div class="speaker" data-lang="jp">ナレーション</div>
+      <div class="speaker" data-lang="en">Narration</div>
+      <div class="speaker" data-lang="tl">Narration</div>
+      <div data-lang="jp">${s.narration.jp}</div>
+      <div data-lang="en">${s.narration.en}</div>
+      <div data-lang="tl">${s.narration.tl}</div>
+    </div>`;
+  stage.appendChild(el);
+});
+
+// dots
+scenes.forEach((s, i) => {
+  const d = document.createElement('div');
+  d.className = 'dot';
+  d.title = s.id;
+  dotsEl.appendChild(d);
+});
+
+const totalSec = scenes.reduce((a, s) => a + s.duration, 0);
+const fmtSec = sec => {
+  const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+  return m + ':' + (s < 10 ? '0' : '') + s;
+};
+totalEl.textContent = fmtSec(totalSec);
+sceneTotalEl.textContent = scenes.length;
+
+let curIdx = 0;
+let curSec = 0;       // 現在シーン経過秒
+let elapsedSec = 0;   // 全体経過秒
+let paused = false;
+let lastTick = Date.now();
+
+function showScene(idx) {
+  document.querySelectorAll('.scene').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+  document.querySelectorAll('.dot').forEach((d, i) => {
+    d.classList.toggle('done', i < idx);
+    d.classList.toggle('cur', i === idx);
+  });
+  sceneIdxEl.textContent = idx + 1;
+  const lang = document.body.dataset.lang || 'jp';
+  sceneTitleEl.textContent = scenes[idx].title[lang];
+  const actKey = 'act_' + scenes[idx].act;
+  actLabelEl.textContent = T[actKey] ? T[actKey][lang] : '';
+}
+
+function tick() {
+  const now = Date.now();
+  const dt = (now - lastTick) / 1000;
+  lastTick = now;
+  if (paused) return;
+  curSec += dt;
+  elapsedSec += dt;
+  elapsedEl.textContent = fmtSec(elapsedSec);
+  if (curSec >= scenes[curIdx].duration) {
+    if (curIdx < scenes.length - 1) {
+      curIdx++;
+      curSec = 0;
+      showScene(curIdx);
+    } else {
+      paused = true;
+      updatePauseBtn();
+    }
+  }
+}
+
+function updatePauseBtn() {
+  const lang = document.body.dataset.lang || 'jp';
+  if (paused) {
+    btnPause.innerHTML = '▶ ' +
+      ({jp:'再生', en:'Play', tl:'I-play'}[lang] || 'Play');
+  } else {
+    btnPause.innerHTML = '⏸ ' +
+      ({jp:'一時停止', en:'Pause', tl:'I-pause'}[lang] || 'Pause');
+  }
+}
+
+btnPause.addEventListener('click', () => {
+  paused = !paused;
+  if (!paused) lastTick = Date.now();
+  updatePauseBtn();
+});
+btnNext.addEventListener('click', () => {
+  if (curIdx < scenes.length - 1) { curIdx++; curSec = 0; showScene(curIdx); }
+});
+btnPrev.addEventListener('click', () => {
+  if (curIdx > 0) { curIdx--; curSec = 0; showScene(curIdx); }
+});
+btnRestart.addEventListener('click', () => {
+  curIdx = 0; curSec = 0; elapsedSec = 0;
+  paused = false;
+  showScene(0); updatePauseBtn();
+  lastTick = Date.now();
+});
+
+// 言語切替
+document.querySelectorAll('[data-set-lang]').forEach(a => {
+  a.addEventListener('click', () => {
+    const lang = a.dataset.setLang;
+    document.body.dataset.lang = lang;
+    document.querySelectorAll('[data-set-lang]').forEach(x =>
+      x.classList.toggle('active', x === a));
+    updatePauseBtn();
+    showScene(curIdx);  // act ラベルとシーンタイトルを再描画
+  });
+});
+
+// hash 経由で特定シーンに直接ジャンプ
+(function () {
+  const m = location.hash.match(/^#scene-(\d+)$/);
+  if (m) {
+    const i = parseInt(m[1]) - 1;
+    if (i >= 0 && i < scenes.length) curIdx = i;
+  }
+})();
+
+// キックオフ
+showScene(curIdx);
+updatePauseBtn();
+setInterval(tick, 100);
+</script>
+</body>
+</html>
