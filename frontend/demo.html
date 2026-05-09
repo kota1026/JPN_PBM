@@ -4,7 +4,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>JPN-PBM · Auto Demo (5 min)</title>
-<link rel="stylesheet" href="/ui/styles.css">
+<style>
+  /* === 自己完結用: styles.css の必要部分をインライン化 === */
+  /*    (htmlpreview.github.io / file:// 直接オープンに対応) */
+  :root {
+    --tokyo-green: #00A040; --tokyo-green-dark: #007a30; --tokyo-green-50: #e6f6ec;
+    --tokyo-navy: #0E419A; --tokyo-navy-dark: #0a3175; --tokyo-navy-50: #e8edf7;
+    --tokyo-red: #E60012; --tokyo-yellow: #F8B500;
+    --ink: #1a1f2c; --ink-sub: #5c6470; --ink-mute: #8e96a3;
+    --bg: #f4f6f9; --card: #ffffff;
+    --line: #dfe3eb; --line-strong: #c8cdd6;
+    --r-sm: 4px; --r-md: 8px; --r-lg: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; font-family: -apple-system, "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif; font-size: 14px; line-height: 1.6; color: var(--ink); }
+</style>
 <style>
   /* ============ プレイヤー シェル ============ */
   body { background: #0a0d12; color: #e6e8ee; min-height: 100vh; overflow: hidden;
