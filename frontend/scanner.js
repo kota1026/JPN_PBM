@@ -22,7 +22,18 @@ function loadScript(src) {
 
 /* ===== カメラ + 検出器 ===== */
 
+/* iOS Safari notes (戦略会議 #14 採択 T3):
+   - iOS 17.4+ Safari は BarcodeDetector が ean_13 / qr_code を全部サポート (ネイティブ採用)
+   - iOS 16 Safari は BarcodeDetector を持つが ean_13 を返さないことがある → ZXing にフォールバック
+   - iOS 16 以下 / Chrome iOS は ZXing 必須
+   - HTTPS 必須 (localhost は iOS で getUserMedia 不可)
+   - 詳細: docs/scanner-iphone-test-checklist.md
+*/
+
 const NATIVE_SUPPORTED_FORMATS = ['ean_13', 'ean_8', 'code_128', 'qr_code'];
+// iOS で `ean_13` を必須として「足りないなら ZXing にフォールバック」する
+// (iOS 16 で BarcodeDetector が `qr_code` だけ返してくる挙動の救済)
+const REQUIRED_FORMATS_FOR_NATIVE = ['ean_13', 'qr_code'];
 
 async function getNativeDetector() {
   if (!('BarcodeDetector' in window)) return null;
@@ -30,6 +41,9 @@ async function getNativeDetector() {
     const supported = await window.BarcodeDetector.getSupportedFormats();
     const ok = NATIVE_SUPPORTED_FORMATS.filter(f => supported.includes(f));
     if (!ok.length) return null;
+    // 必要なフォーマットがすべて揃っていなければ null を返して ZXing 経路に倒す
+    const hasRequired = REQUIRED_FORMATS_FOR_NATIVE.every(f => ok.includes(f));
+    if (!hasRequired) return null;
     return new window.BarcodeDetector({ formats: ok });
   } catch { return null; }
 }
