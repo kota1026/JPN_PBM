@@ -5,7 +5,21 @@ __pycache__/
 .venv/
 venv/
 *.db
+*.db-wal
+*.db-shm
 *.sqlite
 *.sqlite3
 .DS_Store
 .env
+
+# Node / Playwright (e2e dev only)
+node_modules/
+package-lock.json
+
+# Foundry / Solidity build (Round 11)
+out/
+cache/
+broadcast/
+
+# Local artifacts
+/tmp/jpn-pbm-handoff-*.zip
