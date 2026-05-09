@@ -1,6 +1,13 @@
 # JICA Digital Public Goods Application — JPN-PBM Tokyo + Manila Twin Pilot
 
-> **Document type**: Draft v1.0 for internal review (NOT for submission).
+> **Document type**: Draft **v1.2** for internal review (NOT for submission).
+>
+> **v1.2 update (2026-05-09 Round 19)**: Reflects Round 18 CP-6 v2 redesign (Strategy Meetings #16 + #17). Major changes:
+> - Withdrew "world first" claim; replaced with "two-country, two-design honest reference"
+> - Updated §1 to reference CP-6 v2 (JP A+E hybrid + PH DL Protocol)
+> - Added §6 risk for v1 design retraction
+> - Added Round 18/19 progress to §3.3
+> - All references to CP-6 now point to [`cp6-offline-fallback-v2-jp.md`](./cp6-offline-fallback-v2-jp.md) and [`cp6-offline-fallback-v2-ph.md`](./cp6-offline-fallback-v2-ph.md).
 > **Funding window targeted**: JICA Digital Public Goods (DPG) Initiative, FY2026.
 > **Applicant lead**: To be designated (corporate vehicle TBD; see §4).
 > **Co-applicants** (proposed): JPYC Inc. (Japan), Coins.ph (Philippines), Tokyo Metropolitan Government, DSWD Quezon City Field Office.
@@ -27,8 +34,7 @@ the Philippines).
 3. **Designed for low-resource environments**: hybrid eligibility (barcode-strict +
    merchant-MCC fallback) means **no POS hardware is required at sari-sari stores** ─
    recipient smartphone scanning suffices. See [`backend/app/services/item_eligibility.py`](../backend/app/services/item_eligibility.py).
-4. **Disaster-resilient**: pre-signed offline coupons (CP-6) survive network outage of
-   up to 30 days. World-first feature for municipal subsidy systems.
+4. **Disaster-resilient (CP-6 v2)**: Two distinct designs — Japan's A+E hybrid (MyNumber Felica SE + shelter terminal) and Philippines' Disaster Lista Protocol (paper voucher + sari-sari opt-in lista + barangay & Red Cross). Both designs survive disasters with **no POS dependency** — see [`cp6-offline-fallback-v2-jp.md`](./cp6-offline-fallback-v2-jp.md) and [`cp6-offline-fallback-v2-ph.md`](./cp6-offline-fallback-v2-ph.md). Honestly positioned as "two-country, codebase-shared honest reference" rather than "world-first" claim (v1 was withdrawn after design assumption error was identified — see Strategy Meetings #16 + #17).
 5. **Privacy by design**: HMAC pseudonymization at the system boundary; k-anonymity
    (k=5) on all aggregate exports.
 6. **Standards compliance**: EMV QR Code Specification (MPM mode, BSP Circular 2019-859);
@@ -212,7 +218,8 @@ JICA grant + in-kind = ~¥92M total project value.
 | 6 | sari-sari store fraud (false MCC claims) | Medium | Medium | Quarterly audit + 3-strike removal + barcode-required for high-value items |
 | 7 | Recipient smartphone unavailability | Medium | Medium | Pre-issued paper QR (CP-6 design) covers offline case |
 | 8 | External audit finds critical bug | Low | High | Audit gates mainnet deploy; testnet pilot continues with bug fixes |
-| 9 | Polygon network outage > 24h | Very Low | Medium | CP-6 offline coupons + 30-day reconciliation grace period |
+| 9 | Polygon network outage > 24h | Very Low | Medium | CP-6 v2 offline mechanisms (JP: SE counter / PH: paper + barangay) + 30-day reconciliation grace period |
+| 11 | **CP-6 v1 design retraction (transparency risk)** | Low | Medium | We openly documented the v1 assumption error (POS dependency) and the v2 redesign reasoning ([`docs/strategy-2026-05-round17.md`](./strategy-2026-05-round17.md)). Treat this as a **transparency feature**, not a hidden flaw — JICA reviewers can verify the iteration history in git log. |
 | 10 | Currency redenomination | Very Low | High | Underlying token is regulator-pegged stablecoin, not crypto |
 
 ---

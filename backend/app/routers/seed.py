@@ -158,11 +158,18 @@ def _load_ph(db: Session) -> dict:
             qr_ph_id=s.get("qr_ph_id"),
         ))
 
+    # 戦略会議 #17 採択 PH-7 (R19): 世帯単位 voucher 対応
+    from app.services.household import derive_household_id  # noqa: WPS433
     citizens = json.loads((seed_dir / "citizens.json").read_text(encoding="utf-8"))
     pid_map: dict[str, str] = {}
     for c in citizens:
         pid = pseudonymize(c["psn"])
         pid_map[c["psn"]] = pid
+        # household_psn が seed に含まれていれば world_id を派生
+        # (含まれない古い seed との後方互換のため None 許容)
+        household_id = None
+        if c.get("household_psn"):
+            household_id = derive_household_id(primary_psn_or_maina=c["household_psn"])
         if db.get(Citizen, pid):
             continue
         db.add(Citizen(
@@ -172,6 +179,7 @@ def _load_ph(db: Session) -> dict:
             ward=c["city"],
             dob=datetime.fromisoformat(c["dob"]).date(),
             gender=c["gender"],
+            household_id=household_id,
         ))
         jpyc.mint(db, pid, "citizen", 50_000)  # PHPC とラベル分けしないが量は同じ
 
