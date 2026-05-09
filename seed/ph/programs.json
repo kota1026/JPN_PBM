@@ -1,0 +1,83 @@
+[
+  {
+    "id": "prog-4ps-2026",
+    "name": "4Ps PBM Pilot 2026 (Quezon City Closed Alpha)",
+    "description": "戦略会議 #11/#12 (Round 12-13) で実シード化。フィリピン社会福祉省 (DSWD) の Pantawid Pamilyang Pilipino Program の PBM 化試験運用。Quezon City 内 5 世帯 × 5 sari-sari store + Mercury Drug でハイブリッド eligibility (バーコード厳格 + MCC fallback) を検証。月額 PHP 1,400 (= ~¥3,500) 相当の food+household を補助。subsidy 60%。",
+    "underlying_token": "PHPC",
+    "country": "PH",
+    "regulator": "DSWD + BSP sandbox",
+    "budget_centavos": 100000000,
+    "subsidy_bps": 6000,
+    "per_citizen_cap_centavos": 140000,
+    "cap_no_barcode_centavos": 30000,
+    "eligibility_mode": "hybrid",
+    "start_at": "2026-06-01T00:00:00",
+    "end_at":   "2026-12-31T23:59:59",
+    "eligibility": {
+      "cities": ["Quezon City", "Manila City", "Caloocan City", "Taguig City", "Pasig City"],
+      "min_children_under_18": 1
+    },
+    "eligible_categories": [
+      "food.baby",
+      "food.staple",
+      "food.canned",
+      "food.dairy",
+      "food.condiment",
+      "food.spread",
+      "household.baby",
+      "household.daily"
+    ],
+    "eligible_jans": [],
+    "excluded_jans": [
+      "4801234560206",
+      "4801234560213"
+    ],
+    "approved_mccs": [5411, 5499, 5912],
+    "blocked_mccs":  [5921, 5993, 5813, 7995],
+    "approved_stores": [
+      "ph-store-aling-maria-qc",
+      "ph-store-mang-pedro-mnl",
+      "ph-store-lola-rosa-cal",
+      "ph-store-gerry-tag",
+      "ph-store-aling-lina-pas",
+      "ph-store-mercury-qc",
+      "ph-store-7eleven-mnl"
+    ],
+    "fiscal_year_budgets": {
+      "2026": 50000000,
+      "2027": 50000000
+    }
+  },
+  {
+    "id": "prog-disaster-typhoon-2026",
+    "name": "Typhoon Stockpile Rolling Subsidy 2026 (Manila Bay Pilot)",
+    "description": "戦略会議 #12 採択 (R13)。台風シーズン (6-11 月) の備蓄物資購入を 50% 補助。Quezon/Manila/Caloocan 在住の 4Ps 受給世帯が対象。災害発生時は CP-6 オフライン QR で給付継続。subsidy 50%。月額 PHP 500 上限。",
+    "underlying_token": "PHPC",
+    "country": "PH",
+    "regulator": "DSWD + NDRRMC",
+    "budget_centavos": 50000000,
+    "subsidy_bps": 5000,
+    "per_citizen_cap_centavos": 50000,
+    "cap_no_barcode_centavos": 10000,
+    "eligibility_mode": "hybrid",
+    "start_at": "2026-06-01T00:00:00",
+    "end_at":   "2026-11-30T23:59:59",
+    "eligibility": {
+      "cities": ["Quezon City", "Manila City", "Caloocan City"]
+    },
+    "eligible_categories": [
+      "food.canned",
+      "food.staple",
+      "household.daily"
+    ],
+    "eligible_jans": [],
+    "excluded_jans": [],
+    "approved_mccs": [5411, 5499],
+    "blocked_mccs":  [5921, 5993, 5813, 7995],
+    "approved_stores": [
+      "ph-store-aling-maria-qc",
+      "ph-store-mang-pedro-mnl",
+      "ph-store-lola-rosa-cal"
+    ]
+  }
+]

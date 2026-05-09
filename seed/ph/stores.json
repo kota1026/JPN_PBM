@@ -1,0 +1,10 @@
+[
+  {"id": "ph-store-aling-maria-qc",  "name": "Aling Maria's Sari-Sari Store",  "city": "Quezon City",   "mcc": 5411, "qr_ph_id": "MERCHANT-MARIA-QC-001"},
+  {"id": "ph-store-mang-pedro-mnl",  "name": "Mang Pedro's Mini Mart",         "city": "Manila City",   "mcc": 5499, "qr_ph_id": "MERCHANT-PEDRO-MNL-002"},
+  {"id": "ph-store-lola-rosa-cal",   "name": "Lola Rosa Convenience",          "city": "Caloocan City", "mcc": 5411, "qr_ph_id": "MERCHANT-ROSA-CAL-003"},
+  {"id": "ph-store-gerry-tag",       "name": "Gerry's Tindahan",               "city": "Taguig City",   "mcc": 5411, "qr_ph_id": "MERCHANT-GERRY-TAG-004"},
+  {"id": "ph-store-aling-lina-pas",  "name": "Tindahan ni Aling Lina",         "city": "Pasig City",    "mcc": 5411, "qr_ph_id": "MERCHANT-LINA-PAS-005"},
+  {"id": "ph-store-mercury-qc",      "name": "Mercury Drug Quezon Avenue",     "city": "Quezon City",   "mcc": 5912, "qr_ph_id": "MERCHANT-MERCURY-QC-006"},
+  {"id": "ph-store-7eleven-mnl",     "name": "7-Eleven Manila Bay",            "city": "Manila City",   "mcc": 5499, "qr_ph_id": "MERCHANT-7E-MNL-007"},
+  {"id": "ph-store-blocked-liquor",  "name": "Tatay's Liquor Store (BLOCKED)", "city": "Manila City",   "mcc": 5921, "qr_ph_id": "MERCHANT-LIQUOR-BLOCKED-X"}
+]
