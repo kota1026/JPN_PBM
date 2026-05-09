@@ -123,7 +123,7 @@ PBM でラップした JPYC:
 
 ---
 
-## 5. ★ 世界初の差別化要素 ─ 災害時フォールバック (CP-6)
+## 5. ★ 災害時フォールバック (CP-6 v2) ─ 日本独自最適化
 
 <div class="highlight">
 
@@ -254,7 +254,7 @@ summary: ok=39  warn=5  fail=0  skip=4
 | 4 | 江東区 子育て世帯 5-20 世帯のオプトイン参加 | 江東区 こども未来部 | 4 週間 |
 | 5 | 認定加盟店 2-5 店舗のオプトイン参加 | 江東区 商工課 | 4 週間 |
 
-**最初は 5 世帯 × 2 店舗の机上実証から開始可能**。リスクは限定的、効果は世界初。
+**最初は 5 世帯 × 2 店舗の机上実証から開始可能**。リスクは限定的、社会インパクトは大きい。
 
 ---
 
@@ -279,7 +279,7 @@ summary: ok=39  warn=5  fail=0  skip=4
 ✅ **OSS (Apache 2.0)** ─ ベンダーロックインなし、自治体が自由にフォーク可
 ✅ **設計ドキュメント完備** ─ ホワイトペーパー / 本番運用手順書 / 多自治体フォーク手順
 ✅ **国際展開準備** ─ 戦略会議 9/10 英訳済、OECD / BIS / MAS 共有可
-✅ **災害時フォールバック (CP-6)** ─ 世界初設計、PR 価値が高い
+✅ **災害時フォールバック (CP-6 v2)** ─ 日本 (Felica SE+避難所端末) と PH (DL Protocol) で **2 つの設計を 1 つのコードベースで** 並行運用 — Indonesia BPNT / India PDS / Brazil Bolsa Familia と同水準の社会保障デジタル化を OSS で提供
 
 ⚠️ 正直な現状認識: **Polygon Mumbai testnet には未デプロイ**。RPC URL を頂ければ 3 日で実デプロイ可能 (`scripts/deploy_mumbai.sh` 準備済)。
 mainnet 投入は **外部監査 + 4 者 MoU 後の Phase 2**。
@@ -297,7 +297,8 @@ mainnet 投入は **外部監査 + 4 者 MoU 後の Phase 2**。
 2. `README.md` (機能・全 endpoint の 1 ページ index)
 3. `docs/whitepaper-2026.md` (英文 30 ページ・国際フォーラム提出用)
 4. `docs/production-runbook.md` (本番投入の 5 段階手順)
-5. `docs/cp6-offline-fallback.md` (世界初の災害時フォールバック詳細)
+5. `docs/cp6-offline-fallback-v2-jp.md` (災害時フォールバック v2 — 日本 A+E ハイブリッド)
+6. `docs/cp6-offline-fallback-v2-ph.md` (災害時フォールバック v2 — フィリピン DL Protocol)
 
 **次のステップ案**:
 - (A) 30 分の技術ピッチ + デモを差し上げます (画面共有可)

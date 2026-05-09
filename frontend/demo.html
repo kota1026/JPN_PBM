@@ -378,112 +378,135 @@ const scenes = [
     },
   },
 
-  // ========================= 第3幕: 災害時 (CP-6) =========================
+  // ========================= 第3幕: 災害時 (CP-6 v2) =========================
+  // ⚠ R18 で改訂: 旧 v1 (POS でローカル検証) は前提誤り (POS は災害時動かない)。
+  //   v2 = JP "A+E hybrid" (Felica SE + 避難所端末) / PH "DL Protocol"。
+  //   詳細: docs/cp6-offline-fallback-v2-jp.md / -ph.md
   {
     id: "cp6_pre", act: "disaster", duration: 16,
-    title: { jp: "平時に災害用 QR を事前配布", en: "Pre-issue disaster QR in peacetime", tl: "Mag-issue ng disaster QR" },
+    title: { jp: "v2 設計: POS に頼らない認証", en: "v2: auth without POS", tl: "v2: auth na hindi POS" },
     render: () => `
-      <div class="act-label">${T.act_disaster.jp} ─ 世界初設計</div>
-      <h1 data-lang="jp">⑥ 平時: 都が ECDSA で月次 QR を住民へ事前配布</h1>
-      <h1 data-lang="en">⑥ Peacetime: TMG pre-signs monthly QR per citizen</h1>
-      <h1 data-lang="tl">⑥ Peacetime: pre-sign ng QR</h1>
+      <div class="act-label">${T.act_disaster.jp} ─ v2 (POS 依存設計を撤回)</div>
+      <h1 data-lang="jp">⑥ v1 設計の前提誤り → v2 で再設計</h1>
+      <h1 data-lang="en">⑥ v1 had wrong assumptions → v2 redesigned</h1>
+      <h1 data-lang="tl">⑥ Mali ang v1 → v2 redesign</h1>
       <div class="mock">
-        <h3 style="color:var(--tokyo-red)" data-lang="jp">★ CP-6 ─ 災害時オフラインフォールバック</h3>
-        <h3 style="color:var(--tokyo-red)" data-lang="en">★ CP-6 ─ Disaster offline fallback (world first)</h3>
-        <div style="display:flex; gap:18px; align-items:center;">
-          <div class="qr-mock"></div>
-          <div style="font-size:13px">
-            <div class="row kv" style="border:none"><span>programId</span><span style="font-size:11px">prog-koto-disaster-pack-2026</span></div>
-            <div class="row kv" style="border:none"><span>pid</span><span style="font-size:11px">badf24c3...</span></div>
-            <div class="row kv" style="border:none"><span>monthIndex</span><b>202608</b></div>
-            <div class="row kv" style="border:none"><span>capJpy</span><b>¥10,000</b></div>
-            <div class="row kv" style="border:none"><span>expiresAt</span><b>2026-09-30</b></div>
-            <div class="row kv" style="border:none">
-              <span data-lang="jp">governor 署名</span>
-              <span data-lang="en">governor sig</span>
-              <span class="badge green">ECDSA secp256k1</span>
-            </div>
-          </div>
+        <h3 style="color:var(--tokyo-red)" data-lang="jp">⚠ v1 の問題: POS が災害時に動かない</h3>
+        <h3 style="color:var(--tokyo-red)" data-lang="en">⚠ v1 problem: POS doesn't survive disaster</h3>
+        <h3 style="color:var(--tokyo-red)" data-lang="tl">⚠ Problema sa v1: POS ay hindi gumagana</h3>
+        <div style="font-size:13px;line-height:1.7">
+          <div data-lang="jp">v1 は加盟店 POS が動作する前提でした。実際は:</div>
+          <div data-lang="en">v1 assumed retailer POS continues to operate. Reality:</div>
+          <div data-lang="tl">v1 inakala na gumagana ang POS. Reality:</div>
+          <ul style="margin:6px 0;padding-left:20px">
+            <li data-lang="jp">停電で POS は数日 OFF</li>
+            <li data-lang="en">Power outage → POS dead for days</li>
+            <li data-lang="tl">Walang kuryente → patay ang POS</li>
+            <li data-lang="jp">店舗自体が倒壊・浸水</li>
+            <li data-lang="en">Store building collapses or floods</li>
+            <li data-lang="tl">Bumagsak / nabaha ang tindahan</li>
+            <li data-lang="jp">店員も避難</li>
+            <li data-lang="en">Staff evacuates too</li>
+            <li data-lang="tl">Lumikas din ang empleyado</li>
+          </ul>
         </div>
       </div>`,
     narration: {
-      jp: "平時のうちに、都が住民ごとに月次 QR を ECDSA で事前署名・配布します。スマホ画面と紙印刷の両方で配るのがポイント ─ 災害時にスマホが壊れても、紙が手元にあれば動きます。",
-      en: "In peacetime, TMG pre-signs and distributes monthly QR per citizen with ECDSA. Crucially, both smartphone and paper copies are distributed — even if smartphones fail, the paper still works.",
-      tl: "Sa peacetime, pre-sign ng TMG ang QR. Phone at papel parehong gamit — kung sira ang phone, gamitin ang papel.",
+      jp: "正直に言います。v1 設計には重大な前提誤りがありました。POS が動く前提で書かれていましたが、実際の災害では POS こそ最初に倒れます。R18 で再設計しました。「電源も通信も無い状況で動く認証は何か」から始め直し、JP と PH で別々の v2 を作りました。",
+      en: "Honest acknowledgment: v1 had a critical flawed assumption — that retailer POS continues operating in disaster. In reality, POS is the first thing to fail. Round 18 redesigned from scratch: 'with zero power and zero connectivity, what authentication works?' We made two distinct v2 designs for JP and PH.",
+      tl: "Tapat na pag-amin: may pagkakamali ang v1. Inakala na gumagana ang POS sa sakuna, pero ito ang unang nasisira. Sa Round 18, nag-redesign kami: 'kung walang kuryente at internet, ano ang auth na gumagana?' Dalawang v2 design — JP at PH.",
     },
   },
   {
     id: "cp6_offline", act: "disaster", duration: 22,
-    title: { jp: "ネット遮断中、POS でローカル検証", en: "Network down → local verify at POS", tl: "Walang network → local verify" },
+    title: { jp: "JP v2: マイナンバー Felica SE + 避難所端末", en: "JP v2: MyNumber SE + shelter terminal", tl: "JP v2: MyNumber SE + shelter" },
     render: () => `
-      <div class="act-label">${T.act_disaster.jp}</div>
-      <h1 data-lang="jp">⑦ 首都直下地震発生・ネット遮断</h1>
-      <h1 data-lang="en">⑦ Earthquake — network down</h1>
-      <h1 data-lang="tl">⑦ Lindol — walang network</h1>
+      <div class="act-label">${T.act_disaster.jp} ─ JP v2 (A+E hybrid)</div>
+      <h1 data-lang="jp">⑦ JP: マイナンバー Felica SE + 避難所端末 ハイブリッド</h1>
+      <h1 data-lang="en">⑦ JP: MyNumber Felica SE + shelter terminal hybrid</h1>
+      <h1 data-lang="tl">⑦ JP: MyNumber Felica SE + shelter</h1>
       <div class="mock">
-        <h3 style="color:var(--tokyo-red)">⚠ <span data-lang="jp">ネット切断中</span><span data-lang="en">offline</span><span data-lang="tl">offline</span></h3>
-        <div style="font-size:13px">
+        <h3 data-lang="jp">受給者 → 避難所 → 給付の流れ</h3>
+        <h3 data-lang="en">Citizen → shelter → distribution flow</h3>
+        <h3 data-lang="tl">Citizen → shelter → distribution</h3>
+        <div style="font-size:13px;line-height:1.8">
           <div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line)">
-            <span data-lang="jp">QR スキャン受領</span>
-            <span data-lang="en">QR scanned</span>
+            <span data-lang="jp">① 平時に SE へ pre-stage (¥10,000/月、JPKI 経由)</span>
+            <span data-lang="en">① Peacetime SE prefund (¥10K/mo via JPKI)</span>
             <span class="badge green">✓</span>
           </div>
           <div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line)">
-            <span data-lang="jp">公開鍵で署名検証 (オフライン)</span>
-            <span data-lang="en">Sig verify with cached pubkey (offline)</span>
+            <span data-lang="jp">② 受給者がマイナカード持参 → 避難所端末 (発電機+衛星)</span>
+            <span data-lang="en">② Citizen brings MyNumber card → shelter tablet (generator+sat)</span>
             <span class="badge green">✓</span>
           </div>
           <div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line)">
-            <span data-lang="jp">cap ¥10,000 残量チェック</span>
-            <span data-lang="en">cap ¥10,000 remaining check</span>
-            <span class="badge green">✓ ¥7,400 残</span>
-          </div>
-          <div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line)">
-            <span data-lang="jp">期限内 (+30 day grace)</span>
-            <span data-lang="en">expiresAt + 30d grace</span>
+            <span data-lang="jp">③ NFC で SE counter 読取・更新 (タンパー耐性)</span>
+            <span data-lang="en">③ NFC reads/updates SE counter (tamper-resistant)</span>
             <span class="badge green">✓</span>
           </div>
           <div class="row pulse" style="background:var(--tokyo-yellow);padding:8px;border-radius:4px;margin-top:8px">
-            <span data-lang="jp">🍙 米 5kg + 水 6L 受給 → 紙レシート発行</span>
-            <span data-lang="en">🍙 5kg rice + 6L water → paper receipt</span>
-            <span data-lang="tl">🍙 bigas + tubig → resibo na papel</span>
+            <span data-lang="jp">🍙 物資配布 + 衛星経由で contract に即時/batch</span>
+            <span data-lang="en">🍙 Supplies dispensed + satellite to contract</span>
+            <span data-lang="tl">🍙 Mga supplies + satellite sa contract</span>
           </div>
+        </div>
+        <div style="margin-top:10px;font-size:11px;color:var(--ink-mute)">
+          <span data-lang="jp">紙 QR は二次救済 (SE 喪失/戸別訪問対応)</span>
+          <span data-lang="en">Paper QR is secondary fallback (SE lost / door-to-door)</span>
+          <span data-lang="tl">Papel QR para sa nawalang SE / door-to-door</span>
         </div>
       </div>`,
     narration: {
-      jp: "災害時、加盟店 POS は QR を読み取り、キャッシュ済の governor 公開鍵でローカル署名検証 + nonce 重複チェック + cap 残量確認を行います。すべてオフラインで完結。住民は その場で物資を受け取り、紙のレシートも併発行されます。世界中で、能登半島地震を経験した国でこの仕組みを持つ自治体はありません。",
-      en: "During disaster, the POS reads the QR, verifies the signature locally with the cached governor pubkey, checks nonce duplicates and remaining cap — all fully offline. Citizens receive supplies on the spot with a paper receipt. No municipality anywhere has an equivalent end-to-end offline-online reconciliation path.",
-      tl: "Sa sakuna, lokal na nagva-verify ang POS — fully offline. Tinatanggap agad ng citizen ang supplies + papel na resibo.",
+      jp: "JP v2 は A+E ハイブリッド: マイナンバーカードの Felica SE (90%+ 普及) に月次オフライン枠を pre-stage し、避難所の政府端末 (発電機 + Starlink) で読み書きします。POS には依存しません。SE counter のタンパー耐性で二重支給を機械的に防止。マイナンバー普及と避難所インフラを既に持つ日本の独自最適化です。",
+      en: "JP v2 is an A+E hybrid: MyNumber Felica SE (90%+ penetration) is prefunded monthly with offline allowance, read by government tablets at evacuation centers (generator + Starlink). No POS dependency. SE counter's tamper-resistance prevents double-spending mechanically. This is Japan-specific optimization leveraging existing MyNumber + evacuation center infrastructure.",
+      tl: "JP v2 ay A+E hybrid: MyNumber Felica SE + shelter tablet (generator + Starlink). Hindi umaasa sa POS. SE counter ang pumipigil ng double-spending. Optimized para sa Japan.",
     },
   },
   {
-    id: "cp6_recovery", act: "disaster", duration: 18,
-    title: { jp: "ネット復旧後、batch で精算", en: "Network restored → batch settle", tl: "Network bumalik → batch settle" },
+    id: "cp6_recovery", act: "disaster", duration: 22,
+    title: { jp: "PH v2: Disaster Lista Protocol (3 層)", en: "PH v2: Disaster Lista Protocol (3 layer)", tl: "PH v2: DL Protocol" },
     render: () => `
-      <div class="act-label">${T.act_disaster.jp}</div>
-      <h1 data-lang="jp">⑧ ネット復旧 → POS が batch を on-chain 提出</h1>
-      <h1 data-lang="en">⑧ Network restored → POS submits batch on-chain</h1>
-      <h1 data-lang="tl">⑧ Network bumalik → batch on-chain</h1>
+      <div class="act-label">${T.act_disaster.jp} ─ PH v2 (DL Protocol)</div>
+      <h1 data-lang="jp">⑧ PH: Disaster Lista (DL) Protocol ─ コミュニティ + 紙 + reconcile</h1>
+      <h1 data-lang="en">⑧ PH: Disaster Lista (DL) — community + paper + reconcile</h1>
+      <h1 data-lang="tl">⑧ PH: Disaster Lista (DL) Protocol</h1>
       <div class="mock">
-        <h3 data-lang="jp">PBMOfflineFallback.redeemBatch(items[])</h3>
-        <h3 data-lang="en">PBMOfflineFallback.redeemBatch(items[])</h3>
-        <div style="background:#1a2030;color:#e6e8ee;padding:12px;border-radius:6px;font-family:monospace;font-size:11px;line-height:1.6">
-          <div>require(approvedStores[msg.sender]);  <span style="color:var(--tokyo-green)">✓</span></div>
-          <div>for (item in items):</div>
-          <div>&nbsp;&nbsp;require(ecrecover(digest, sig) == governor);  <span style="color:var(--tokyo-green)">✓</span></div>
-          <div>&nbsp;&nbsp;require(consumed[pid][month] + amount &lt;= capJpy);  <span style="color:var(--tokyo-green)">✓</span></div>
-          <div>&nbsp;&nbsp;consumed[pid][month] += amount;</div>
-          <div>&nbsp;&nbsp;jpyc.transfer(msg.sender, amount);  <span style="color:var(--tokyo-yellow)">⚡</span></div>
-          <div>&nbsp;&nbsp;emit Redeemed(programId, pid, store, month, amount);</div>
+        <h3 data-lang="jp">3 層構造 (SE 不要、Filipino 文化に最適化)</h3>
+        <h3 data-lang="en">3 layers (no SE, Filipino-culture-optimized)</h3>
+        <h3 data-lang="tl">3 layer (walang SE)</h3>
+        <div style="font-size:13px;line-height:1.7">
+          <div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line)">
+            <span data-lang="jp"><b>L1 紙 voucher</b> (耐水ラミネート、世帯単位、台風シーズン opt-in)</span>
+            <span data-lang="en"><b>L1 Paper voucher</b> (laminated, household-unit, opt-in)</span>
+            <span class="badge green">✓</span>
+          </div>
+          <div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line)">
+            <span data-lang="jp"><b>L2 Disaster Lista</b> (サリサリ informal credit, NDRRMC Code Red 中のみ動作)</span>
+            <span data-lang="en"><b>L2 Disaster Lista</b> (sari-sari credit, NDRRMC Code Red only)</span>
+            <span class="badge green">✓</span>
+          </div>
+          <div class="row" style="justify-content:space-between;border-bottom:1px solid var(--line)">
+            <span data-lang="jp"><b>L3 バランガイ + Red Cross</b> (3 層代理 + PRC 立会必須)</span>
+            <span data-lang="en"><b>L3 Barangay + Red Cross</b> (3-tier delegation + PRC witness)</span>
+            <span class="badge green">✓</span>
+          </div>
+          <div class="row pulse" style="background:var(--tokyo-yellow);padding:8px;border-radius:4px;margin-top:8px">
+            <span data-lang="jp">復旧後: 手書き台帳 → DSWD → contract batch (5% 運用許容)</span>
+            <span data-lang="en">After recovery: ledger scan → DSWD → contract (5% tolerance)</span>
+            <span data-lang="tl">Pagkatapos: ledger → DSWD → contract</span>
+          </div>
         </div>
-        <div class="row kv" style="margin-top:8px">
-          <span data-lang="jp">合計精算</span><span data-lang="en">Total settled</span><b>¥1.34M (143 redemptions)</b>
+        <div style="margin-top:10px;font-size:11px;color:var(--ink-mute)">
+          <span data-lang="jp">★ Yolanda 級 (Cat 5+) は NDRRMC 直接配給に切替 (PBM 対象外)</span>
+          <span data-lang="en">★ Yolanda-class (Cat 5+) yields to NDRRMC direct distribution</span>
+          <span data-lang="tl">★ Yolanda-class: NDRRMC direct distribution</span>
         </div>
       </div>`,
     narration: {
-      jp: "ネット復旧後、POS が蓄積していた redemption batch を on-chain に提出。contract が再検証 (署名 + nonce + cap) を行い、JPYC を加盟店に送ります。consumed mapping で二重支給は構造的にゼロ。30 日 grace 期間つきで、複数回の災害でも対応可能。",
-      en: "After recovery, the POS submits the queued batch on-chain. The contract re-verifies signature, nonce, and cap, then transfers JPYC to the store. `consumed` mapping makes double-spend structurally zero. The 30-day grace period covers multi-event scenarios.",
-      tl: "Pagkatapos ng recovery, naisubmit ang batch on-chain. 30-day grace para sa multi-event.",
+      jp: "PH v2 は Disaster Lista Protocol。SE インフラが無いフィリピンでは、Bayanihan / lista という既存のコミュニティ信用文化を formalize します。3 層: 紙 voucher (opt-in 台風シーズン)、サリサリ災害特例 lista (NDRRMC Code Red 中のみ)、バランガイ + Red Cross (3 層代理 + PRC 立会で Padrino リスク緩和)。CP-5 二重支給防止は機械的厳密ではなく 5% 運用許容 + 復旧後監査で honest に設計。Yolanda 級 (Cat 5+) では PBM を諦めて NDRRMC 直接配給に切替えます。",
+      en: "PH v2 is the Disaster Lista Protocol. With no SE infrastructure in the Philippines, we formalize existing bayanihan / lista community trust. 3 layers: paper voucher (opt-in typhoon season), sari-sari disaster lista (NDRRMC Code Red only), and barangay + Red Cross (3-tier delegation + PRC witness mitigates Padrino political risk). CP-5 double-spend is honestly designed as 5% operational tolerance + post-recovery audit, not mechanical strictness. For Yolanda-class (Cat 5+), PBM yields to NDRRMC direct distribution.",
+      tl: "PH v2 ay Disaster Lista Protocol. Walang SE infrastructure, kaya gamit ang bayanihan culture. 3 layers: papel voucher, sari-sari lista (NDRRMC Code Red lang), at barangay + Red Cross (PRC witness vs Padrino risk). 5% tolerance honest design. Yolanda-class: NDRRMC direct distribution.",
     },
   },
 
