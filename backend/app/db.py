@@ -54,6 +54,9 @@ _PENDING_COLUMNS: list[tuple[str, str, str, str]] = [
     ("programs", "eligible_categories", "JSON", "'[]'"),
     ("programs", "excluded_jans",       "JSON", "'[]'"),
     ("programs", "fiscal_year_budgets", "JSON", "'{}'"),
+    # 戦略会議 #13 (R14): マニラ展開のため stores に MCC + QR Ph ID 列追加
+    ("stores",   "mcc",                 "INTEGER", "NULL"),
+    ("stores",   "qr_ph_id",            "VARCHAR(64)", "NULL"),
 ]
 
 

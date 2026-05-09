@@ -345,10 +345,39 @@ The 18-month roadmap defined in Strategy Meeting #1 is tracked in
 | M+12 | Tax-loop (Tokyo electronic tax payment in JPYC) | blocked (legal reform) |
 | M+14 | FSA joint sandbox report | blocked (FSA negotiation) |
 | M+15 | Reskilling subsidy (5,000 SMEs) | pending |
-| M+16 | Other-municipality forks (Osaka / Aichi) | pending |
+| M+16 | Other-municipality forks (Osaka / Aichi / **Manila**) | **ready** |
 | M+18 | Tokyo Model whitepaper (this document) | **ready** |
 
-**Phase 3 = 20% complete** — bottlenecked on real diplomacy, not technology.
+**Phase 3 = 40% complete** — Manila twin-pilot stack is feature-complete; bottleneck is real diplomacy, not technology.
+
+### 6.4 Manila Twin Pilot (added Round 13–14)
+
+The same codebase serves a second jurisdiction: **Quezon City + DSWD 4Ps**, settled in **PHPC** (Bangko Sentral ng Pilipinas–approved peso stablecoin by Coins.ph) on Polygon. 99% of the code is shared with Tokyo; what differs:
+
+| Layer | Tokyo | Manila |
+|-------|-------|--------|
+| Stablecoin | JPYC (Polygon) | **PHPC** (Polygon, BSP regulatory sandbox 2024) |
+| ID provider | MyNumber Portal v2 OAuth | **PhilSys OAuth** ([`backend/app/routers/philsys_oauth.py`](../backend/app/routers/philsys_oauth.py)) |
+| ID hashing | HMAC(MyNumber) | HMAC(PSN) — same `services/privacy.py` |
+| Eligibility mode | `jan_strict` (POS scanners common) | **`hybrid`** (barcode + MCC fallback) |
+| Merchant identity | Store list (manual whitelist) | **EMV QR Ph parser** ([`backend/app/services/qr_ph.py`](../backend/app/services/qr_ph.py)) reading MCC from BSP Circular 2019-859 QR |
+| POS hardware | iPad / dedicated | **Recipient smartphone** (no POS at sari-sari) |
+| Disaster context | Earthquakes (rare, severe) | **Typhoons + flooding (frequent)** — CP-6 invoked monthly |
+| Target program | Koto Ward childcare | **DSWD 4Ps** (4.4M households nationwide; pilot starts at 5 households × 5 sari-sari) |
+| Regulatory base | PIPA Article 16 | Data Privacy Act of 2012 (RA 10173) |
+| Funding path | TMG / Innovation Base | **JICA Digital Public Goods** ([`docs/jica-application-draft-en.md`](./jica-application-draft-en.md)) |
+
+The Manila pilot's value proposition for the international community is **CP-6 (offline disaster fallback) on a recurring, monthly basis**, not the once-a-decade frequency assumed in earthquake-prepared Tokyo. This is positioned as Japan's contribution back to Southeast Asia at OECD / BIS Agorá / MAS Project Orchid forums.
+
+Concrete artifacts, all in this repo:
+
+- 4Ps seed data: [`seed/ph/`](../seed/ph/) (8 mock households, 25 GS1-480 products, 8 stores, 2 programs)
+- PH POS SDK: [`sdk/python/jpn_pbm_pos_ph/`](../sdk/python/jpn_pbm_pos_ph/) (Tagalog/English UX, GCash QR Ph mock)
+- Tagalog citizen UI: [`frontend/ph/citizen.html`](../frontend/ph/citizen.html)
+- JICA application draft: [`docs/jica-application-draft-en.md`](./jica-application-draft-en.md) (24 months, ¥65M cash + ¥27M in-kind)
+- Detailed expansion spec: [`docs/expansion-philippines.md`](./expansion-philippines.md)
+
+What remains for Manila to launch is **not** code; it is the four-party MoU (DSWD × Quezon City LGU × Coins.ph × project lead).
 
 ---
 
