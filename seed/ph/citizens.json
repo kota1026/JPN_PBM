@@ -1,10 +1,12 @@
 [
-  {"psn": "PH-0001", "name": "Maria Santos",       "address": "Brgy. Commonwealth, Quezon City",  "city": "Quezon City",   "dob": "1988-04-12", "gender": "F", "children_under_18": 2},
-  {"psn": "PH-0002", "name": "Jose Reyes",         "address": "Brgy. Tondo, Manila",              "city": "Manila City",   "dob": "1985-07-23", "gender": "M", "children_under_18": 3},
-  {"psn": "PH-0003", "name": "Ana Cruz",           "address": "Brgy. Bagumbong, Caloocan",        "city": "Caloocan City", "dob": "1992-11-05", "gender": "F", "children_under_18": 1},
-  {"psn": "PH-0004", "name": "Pedro Garcia",       "address": "Brgy. Bicutan, Taguig",            "city": "Taguig City",   "dob": "1980-02-18", "gender": "M", "children_under_18": 4},
-  {"psn": "PH-0005", "name": "Rosa Mendoza",       "address": "Brgy. Maybunga, Pasig",            "city": "Pasig City",    "dob": "1987-09-30", "gender": "F", "children_under_18": 2},
-  {"psn": "PH-0006", "name": "Juanito Dela Cruz",  "address": "Brgy. Payatas, Quezon City",       "city": "Quezon City",   "dob": "1979-12-08", "gender": "M", "children_under_18": 3},
-  {"psn": "PH-0007", "name": "Liza Bautista",      "address": "Brgy. Sampaloc, Manila",           "city": "Manila City",   "dob": "1995-06-14", "gender": "F", "children_under_18": 1},
-  {"psn": "PH-0008", "name": "Marlon Aquino",      "address": "Brgy. Bagong Silang, Caloocan",    "city": "Caloocan City", "dob": "1982-03-22", "gender": "M", "children_under_18": 2}
+  {"psn": "PH-0001",   "name": "Maria Santos",       "address": "Brgy. Commonwealth, Quezon City",  "city": "Quezon City",   "dob": "1988-04-12", "gender": "F", "children_under_18": 2, "household_psn": "PH-0001"},
+  {"psn": "PH-0001-A", "name": "Aldrin Santos",      "address": "Brgy. Commonwealth, Quezon City",  "city": "Quezon City",   "dob": "2015-08-03", "gender": "M", "children_under_18": 0, "household_psn": "PH-0001"},
+  {"psn": "PH-0001-B", "name": "Anabel Santos",      "address": "Brgy. Commonwealth, Quezon City",  "city": "Quezon City",   "dob": "2018-11-21", "gender": "F", "children_under_18": 0, "household_psn": "PH-0001"},
+  {"psn": "PH-0002",   "name": "Jose Reyes",         "address": "Brgy. Tondo, Manila",              "city": "Manila City",   "dob": "1985-07-23", "gender": "M", "children_under_18": 3, "household_psn": "PH-0002"},
+  {"psn": "PH-0003",   "name": "Ana Cruz",           "address": "Brgy. Bagumbong, Caloocan",        "city": "Caloocan City", "dob": "1992-11-05", "gender": "F", "children_under_18": 1, "household_psn": "PH-0003"},
+  {"psn": "PH-0004",   "name": "Pedro Garcia",       "address": "Brgy. Bicutan, Taguig",            "city": "Taguig City",   "dob": "1980-02-18", "gender": "M", "children_under_18": 4, "household_psn": "PH-0004"},
+  {"psn": "PH-0005",   "name": "Rosa Mendoza",       "address": "Brgy. Maybunga, Pasig",            "city": "Pasig City",    "dob": "1987-09-30", "gender": "F", "children_under_18": 2, "household_psn": "PH-0005"},
+  {"psn": "PH-0006",   "name": "Juanito Dela Cruz",  "address": "Brgy. Payatas, Quezon City",       "city": "Quezon City",   "dob": "1979-12-08", "gender": "M", "children_under_18": 3, "household_psn": "PH-0006"},
+  {"psn": "PH-0007",   "name": "Liza Bautista",      "address": "Brgy. Sampaloc, Manila",           "city": "Manila City",   "dob": "1995-06-14", "gender": "F", "children_under_18": 1, "household_psn": "PH-0007"},
+  {"psn": "PH-0008",   "name": "Marlon Aquino",      "address": "Brgy. Bagong Silang, Caloocan",    "city": "Caloocan City", "dob": "1982-03-22", "gender": "M", "children_under_18": 2, "household_psn": "PH-0008"}
 ]

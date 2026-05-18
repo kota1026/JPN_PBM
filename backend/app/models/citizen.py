@@ -20,3 +20,8 @@ class Citizen(Base):
     dob: Mapped[date] = mapped_column(Date)
     gender: Mapped[str] = mapped_column(String(1))  # M/F/X
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    # 戦略会議 #17 採択 PH-7 (R19): 世帯単位 voucher 対応。
+    # 同一世帯員は同じ household_id を共有。NULL なら個人単位 (JP 後方互換)。
+    # 推奨値: HMAC(主たる受給者の PSN/My Number)、または DSWD 4Ps 世帯 ID の HMAC。
+    household_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)

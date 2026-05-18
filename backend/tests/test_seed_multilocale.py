@@ -44,17 +44,20 @@ def test_jp_explicit_locale():
 # ============================================================
 
 
-def test_ph_load_creates_8_citizens_25_products():
+def test_ph_load_creates_10_citizens_25_products():
+    """R19 で Santos 世帯に子 2 人 (PH-0001-A, PH-0001-B) を追加 → 10 名 (8 世帯) になった。"""
     r = client.post("/seed/load?locale=ph")
     assert r.status_code == 200
     body = r.json()
     assert body["ok"]
     assert body["locale"] == "ph"
-    assert body["loaded"]["citizens"] == 8
+    assert body["loaded"]["citizens"] == 10  # 8 → 10 (R19 世帯化)
     assert body["loaded"]["products"] == 25
     assert body["loaded"]["stores"] == 8
     assert body["loaded"]["programs"] == 2
     assert "PH-0001" in body["pid_map"]
+    assert "PH-0001-A" in body["pid_map"]  # R19: 子1
+    assert "PH-0001-B" in body["pid_map"]  # R19: 子2
     assert len(body["pid_map"]["PH-0001"]) == 64  # SHA256 hex
 
 

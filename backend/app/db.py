@@ -57,6 +57,8 @@ _PENDING_COLUMNS: list[tuple[str, str, str, str]] = [
     # 戦略会議 #13 (R14): マニラ展開のため stores に MCC + QR Ph ID 列追加
     ("stores",   "mcc",                 "INTEGER", "NULL"),
     ("stores",   "qr_ph_id",            "VARCHAR(64)", "NULL"),
+    # 戦略会議 #17 採択 PH-7 (R19): 世帯単位 voucher 対応
+    ("citizens", "household_id",        "VARCHAR(64)", "NULL"),
 ]
 
 
