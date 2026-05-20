@@ -87,6 +87,9 @@ def init_db() -> None:
         program,
         store,
         wallet,
+        # Round 21 (Donor-PBM):
+        donor,
+        donation,
     )
 
     _migrate(_engine)               # 既存テーブルにカラムを追加

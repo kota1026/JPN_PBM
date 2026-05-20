@@ -1,0 +1,58 @@
+{
+  "program_id": "prog-jica-bangladesh-school-2026",
+  "name": "JICA Bangladesh Primary School Materials Program 2026",
+  "description": "JICA ODA (日本 ODA) 経由で Bangladesh 小学生世帯 (Chattogram + Dhaka Slum 地区) に教科書 + 文房具を配布。受益者は Bangladesh NID + 携帯番号 KYC、寄付者は日本国民 (税金経由)。透明化 dashboard で 国会説明責任を代替。",
+  "treasury": "jica-bangladesh-treasury",
+  "front_end_npo": "jica-tokyo-hq",
+  "underlying_token": "JPYC",
+  "country": "BD",
+  "country_name": "Bangladesh",
+  "regulator": "JICA + Bangladesh Bank + MRA",
+  "donor_visibility_granularity": "country",
+  "k_anon_threshold": 50,
+  "biometric_on_chain": false,
+  "budget_jpyc_centi": 10000000000,
+  "subsidy_bps": 10000,
+  "per_household_cap_jpyc_centi": 8000000,
+  "cap_no_barcode_jpyc_centi": 0,
+  "eligibility_mode": "jan_strict",
+  "start_at": "2026-04-01T00:00:00",
+  "end_at": "2027-03-31T23:59:59",
+  "eligibility": {
+    "regions": ["Chattogram", "Dhaka Slum"],
+    "id_systems": ["bd_nid", "phone_kyc_carrier"],
+    "min_children_school_age": 1,
+    "school_attendance_verified": true
+  },
+  "eligible_jans": [
+    "8901234567001",
+    "8901234567002",
+    "8901234567003",
+    "8901234567004",
+    "8901234567005"
+  ],
+  "eligible_categories": ["education.textbook", "education.stationery", "education.uniform"],
+  "excluded_jans": [],
+  "approved_mccs": [5942, 5943],
+  "blocked_mccs": [5921, 5993, 5813, 7995, 5912],
+  "approved_suppliers": [
+    "supplier-chattogram-bookhouse-001",
+    "supplier-dhaka-rifles-stationary-002",
+    "supplier-dhaka-uniform-003",
+    "supplier-chittagong-edutex-004"
+  ],
+  "expected_donors": 0,
+  "expected_beneficiaries": 3000,
+  "tax_payer_dashboard_enabled": true,
+  "donor_tier_thresholds_jpyc_centi": {
+    "anon_max": 500000,
+    "tier1_max": 10000000,
+    "tier2_max": 100000000
+  },
+  "audit_trail": {
+    "ndrrmc_equivalent": "Bangladesh Department of Disaster Management",
+    "emergency_bypass_enabled": false,
+    "post_recovery_audit_days": 30,
+    "national_assembly_report": "quarterly"
+  }
+}

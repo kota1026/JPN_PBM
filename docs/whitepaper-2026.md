@@ -477,4 +477,166 @@ This whitepaper is a synthesis. Foundational decisions live in:
 
 ---
 
-*End of whitepaper draft v0.1.* Comments to: TMG Working Group + repo maintainers.
+## 10. Donor-PBM — TAM 100x expansion (added Round 20-21)
+
+> See full design in [`docs/expansion-donor-pbm.md`](./expansion-donor-pbm.md).
+> Strategy Meeting #19 record: [`strategy-2026-05-round19.md`](./strategy-2026-05-round19.md).
+
+### 10.1 Motivation
+
+Beyond municipal subsidies (Tokyo + Manila), the same PBM contract architecture
+solves a much larger problem: **donor transparency in international aid**.
+
+| Pain point in donor world | JPN-PBM existing feature that addresses it |
+|---------------------------|--------------------------------------------|
+| "Where did my $100 go?" (opaque) | on-chain `Spent` event for traceability |
+| 15-30% admin overhead | contract pays supplier directly = middleman structurally impossible |
+| Field corruption | CP-2 5-way require makes off-purpose use impossible |
+| Donor-beneficiary disconnect | EBPM k-anonymous aggregation shows real-time impact |
+| Doesn't reach in disasters | **CP-6 v2** is literally this problem |
+
+→ **80% of existing features apply directly**, with 20% new (donor wallet, KYC tier, AML screening, UNHCR ProGres federation, CP-8 emergency bypass).
+
+### 10.2 Three-role architecture
+
+```
+[Donor (individual / corporation / foundation)]
+   ↓ KYC tier + AML screen (DP-2 / DP-3 / DP-4)
+[Front-end NPO (UNICEF / WFP / JICA)]      ← Pass-through (DPI-2): NPO holds VASP/MSB
+   ↓
+[Treasury = UN agency / NPO]
+   ↓ PBM contract
+[Beneficiary]      ← UNHCR ProGres federate (DPI-1)
+   ↓
+[Approved supplier]
+```
+
+The PBM distribution layer (right three blocks) is **the existing implementation**. The donor-side (left two blocks) is the Round 21 addition.
+
+### 10.3 KYC tier policy (DPI-6)
+
+| Tier | Donation amount | KYC requirements | Cost |
+|------|-----------------|-------------------|------|
+| 0 Anonymous | $0-50 | None | $0 |
+| 1 Light | $50-1000 | Name + DOB + email | $1-3 |
+| 2 Full | $1000-10000 | + photo ID + biometric | $5-8 |
+| 3 Enhanced | $10000+ | + source of wealth | $15-30 |
+
+FATF Travel Rule forces Tier 2+ for $3,000+ donations.
+
+### 10.4 AML 3-source cross-check (DPI-4)
+
+Default: **OFAC + UN Consolidated + EU Consolidated** (all free, public).
+Cross-checking 3 sources reduces false positive from 30% (OFAC alone) to 5%.
+High-value donations ($1000+) escalate to ComplyAdvantage / World-Check (commercial).
+
+Risk-based scoring: country + multi-source hit count determines auto-reject vs manual review.
+
+### 10.5 CP-8: Emergency bypass + 14-day audit (DPI-5)
+
+A new critical property added in Round 18: in declared emergencies (NDRRMC Code Red or equivalent), an AML-rejected donation can be accepted with mandatory 14-day post-recovery audit. If audit finds the bypass was inappropriate, clawback is initiated.
+
+This addresses Red Team finding R-2: "AML false positive is fatal in emergencies." For example, a "Mohammed Khan" buying medicine for a child during a typhoon should not be blocked by name-only OFAC matching.
+
+### 10.6 UNHCR ProGres federation (DPI-1)
+
+JPN-PBM **does not create new identity systems** for beneficiaries. Instead, it federates UNHCR's existing ProGres registry (75 million refugees + IDPs, iris-biometric for unbanked populations).
+
+ProGres IDs are HMAC-pseudonymized at the boundary; raw IDs and biometrics **never reach the on-chain contract** (DPI-7). This is critical: it directly addresses the 2021 Rohingya data incident where biometric data fell into the wrong hands.
+
+### 10.7 Honest framing — what is NOT a "world first"
+
+Following the Round 18 lesson, this section is explicit about prior art:
+
+| Project | Strength | Weakness | Our difference |
+|---------|----------|----------|----------------|
+| **WFP Building Blocks** | $300M+ live, UN-official | Proprietary, UN-agency-only | OSS + individual donor UI + CP-6 |
+| Aid:Tech (Ireland) | Middle East refugee KYC | Commercial failure | OSS survives community-driven |
+| Disberse (UK, closed 2020) | Early mover | Business model failed | Not NPO-dependent |
+| **GiveDirectly** | $700M+/year, M-Pesa | No blockchain | On-chain transparency + multi-currency |
+| UNICEF CryptoFund | $50M, UN-official | Receive-only, no PBM | Purpose binding + beneficiary dashboard |
+
+Our **defensible positioning**:
+1. **Full Apache 2.0 OSS** (Building Blocks / Aid:Tech are proprietary)
+2. **CP-6 v2 disaster fallback** (none of the comparators have this)
+3. **2-country codebase shared** (JP + PH) — minimal fork cost for international NPOs
+4. **Individual donor dashboard** (Building Blocks lacks this — it's UN-agency-only)
+5. **Honest framing** (no "world first" claim, respect existing implementations)
+
+### 10.8 Pass-through structure (DPI-2)
+
+JPN-PBM **does not become a VASP / MSB**. The front-end NPO (UNICEF / WFP / JICA / Save the Children) is responsible for:
+- Donor KYC
+- Initial AML screening
+- Donation receipt + custody
+- Treasury conversion (fiat → stablecoin)
+- Regulatory compliance (VASP / MSB / FATF)
+- Beneficiary roster (with UN agencies' help)
+
+JPN-PBM provides:
+- The PBM contract (Tokyo + Manila existing)
+- The donor dashboard (impact tracking)
+- The unified protocol (4 roles speak the same API)
+- Open source reference (Apache 2.0)
+
+This separation means **regulatory burden does not fall on the OSS implementer**, only on the operating NPO.
+
+---
+
+## 11. Five Scenarios
+
+The Donor-PBM design supports 5 concrete scenarios, each backed by mock seed data:
+
+| ID | Scenario | Token | Beneficiaries | Donor side |
+|----|----------|-------|---------------|------------|
+| **A** | UNICEF Mali Mosquito Net | USDC | 5,000 households (Kayes region) | Individual donors via Coinbase |
+| **B** | WFP Yemen Food Distribution | USDC | 12,000 households (Sa'ada/Hodeidah) | WFP Building Blocks interop |
+| **C** | JICA Bangladesh School Materials | JPYC | 3,000 households (Chattogram/Dhaka) | Japanese taxpayers via ODA |
+| **D** | Individual + Disaster Emergency | USDC | Filipino typhoon victims | Personal donors + CP-8 |
+| **E** | Tokyo+Manila existing coexistence | JPYC/PHPC | Koto Ward / 4Ps recipients | International donors layered on top |
+
+Each scenario has corresponding seed JSON at [`seed/donor/`](../seed/donor/).
+
+---
+
+## 12. Roadmap impact
+
+Adding Donor-PBM introduces a new **Phase 4** to the roadmap:
+
+| Phase | Pre-R20 | Post-R20 |
+|-------|---------|----------|
+| Phase 1 (Tokyo Closed Alpha) | 86% | 86% (unchanged) |
+| Phase 2 (23-ward + Manila) | 77% | 77% (unchanged) |
+| Phase 3 (Institutional integration) | 52% | 60% (Donor-PBM strengthens M+18 evidence) |
+| **Phase 4 (Donor-PBM / international aid) [NEW]** | n/a | **30% (sandbox complete)** |
+
+The TAM expansion:
+
+- **Tokyo + Manila municipal**: ¥640B + PHP 100B = ~¥900B annual addressable
+- **+ Japan all-LGUs**: ~¥6T annual addressable
+- **+ JICA ODA**: ¥1.7T annual addressable
+- **+ UN humanitarian (WFP, UNICEF, UNHCR, Red Cross)**: **$50B+ annual addressable**
+
+≒ **100x expansion** from the original Tokyo target, with the same codebase.
+
+---
+
+## Appendix B — Citations to Strategy Meetings (updated)
+
+(Through R20)
+- [Strategy Meeting #1](./strategy-2026-04-en.md) — 11-agent decision protocol; 18-month roadmap.
+- [Strategy Meeting #2-#9](./strategy-2026-05-round2-en.md) ... — Eligibility, POS SDK, OAuth, ECDSA Sol compat, etc.
+- [Strategy Meeting #10](./strategy-2026-05-round10-en.md) — Sandbox completion (Round 11).
+- [Strategy Meeting #11](./strategy-2026-05-round11-en.md) — Smartphone scan + hybrid eligibility (Round 12).
+- [Strategy Meeting #12](./strategy-2026-05-round12-en.md) — Philippines foundation (Round 13).
+- [Strategy Meeting #13](./strategy-2026-05-round13-en.md) — Manila Phase 1 + handoff packages (Round 14).
+- [Strategy Meeting #14](./strategy-2026-05-round14-en.md) — Adapter layer + LoI templates (Round 15).
+- [Strategy Meeting #15](./strategy-2026-05-round15-en.md) — Video recording packet (Round 16).
+- [Strategy Meeting #16-#17](./strategy-2026-05-round17-en.md) — CP-6 v2 redesign (Round 18).
+- [Strategy Meeting #18](./strategy-2026-05-round18-en.md) — Household schema + i18n (Round 19).
+- [Strategy Meeting #19](./strategy-2026-05-round19.md) — Donor-PBM pivot (Round 20).
+- [Strategy Meeting #20](./strategy-2026-05-round20.md) — Donor-PBM implementation plan (Round 21, this round).
+
+---
+
+*Updated through Round 21.* Tokyo + Manila + Donor-PBM. Open source / Apache 2.0.
