@@ -1,0 +1,55 @@
+{
+  "program_id": "prog-unicef-mali-llin-2026",
+  "name": "UNICEF Mali LLIN Distribution 2026 (Rainy Season)",
+  "description": "雨季 (5-9 月) のマラリア予防のための LLIN (長期残効型蚊帳) を Mali Kayes region の 5 歳以下児童世帯に配布。寄付者は USDC で寄付、現地は UNICEF-認定卸経由で受領。受益者識別は UNHCR ProGres + Mali NID hybrid。",
+  "treasury": "unicef-mali-treasury",
+  "front_end_npo": "unicef-japan",
+  "underlying_token": "USDC",
+  "country": "ML",
+  "country_name": "Mali",
+  "regulator": "UNICEF + BCEAO + WHO",
+  "donor_visibility_granularity": "country",
+  "k_anon_threshold": 50,
+  "biometric_on_chain": false,
+  "budget_usdc_centi": 5000000000,
+  "subsidy_bps": 10000,
+  "per_household_cap_usdc_centi": 3000000,
+  "cap_no_barcode_usdc_centi": 0,
+  "eligibility_mode": "jan_strict",
+  "start_at": "2026-05-01T00:00:00",
+  "end_at": "2026-09-30T23:59:59",
+  "eligibility": {
+    "regions": ["Kayes", "Koulikoro", "Sikasso"],
+    "min_children_under_5": 1,
+    "id_systems": ["unhcr_progres", "mali_nid"]
+  },
+  "eligible_jans": [
+    "4806515600901",
+    "4806515600902",
+    "4806515600903",
+    "4806515600904"
+  ],
+  "eligible_categories": ["health.mosquito_net"],
+  "excluded_jans": [],
+  "approved_mccs": [5912, 8099],
+  "blocked_mccs": [5921, 5993, 5813, 7995],
+  "approved_suppliers": [
+    "supplier-bamako-pyramide-001",
+    "supplier-bamako-medicapharma-002",
+    "supplier-kayes-pharmali-003",
+    "supplier-koulikoro-univ-004",
+    "supplier-sikasso-vetenet-005"
+  ],
+  "expected_donors": 2000,
+  "expected_beneficiaries": 5000,
+  "donor_tier_thresholds_usdc_centi": {
+    "anon_max": 5000,
+    "tier1_max": 100000,
+    "tier2_max": 1000000
+  },
+  "audit_trail": {
+    "ndrrmc_equivalent": "BCEAO + UN OCHA",
+    "emergency_bypass_enabled": true,
+    "post_recovery_audit_days": 14
+  }
+}

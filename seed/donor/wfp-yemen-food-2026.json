@@ -1,0 +1,55 @@
+{
+  "program_id": "prog-wfp-yemen-food-2026",
+  "name": "WFP Yemen Food Distribution 2026 (Cooperation with Building Blocks)",
+  "description": "WFP Building Blocks ($300M+ 既存実装) との interop で Yemen 紛争地 (Sa'ada, Hodeidah) の難民世帯に食料配布。受益者識別は UNHCR ProGres iris のみ (Mali より厳密)。寄付者は個人 + UN agency 集約。",
+  "treasury": "wfp-yemen-treasury",
+  "front_end_npo": "wfp-building-blocks-bridge",
+  "underlying_token": "USDC",
+  "country": "YE",
+  "country_name": "Yemen",
+  "regulator": "WFP + UN OCHA + UN Sanctions Committee",
+  "donor_visibility_granularity": "country",
+  "k_anon_threshold": 50,
+  "biometric_on_chain": false,
+  "budget_usdc_centi": 20000000000,
+  "subsidy_bps": 10000,
+  "per_household_cap_usdc_centi": 5000000,
+  "cap_no_barcode_usdc_centi": 1000000,
+  "eligibility_mode": "hybrid",
+  "start_at": "2026-06-01T00:00:00",
+  "end_at": "2027-05-31T23:59:59",
+  "eligibility": {
+    "regions": ["Sa'ada", "Hodeidah", "Hajjah"],
+    "id_systems": ["unhcr_progres"],
+    "min_household_members": 1,
+    "conflict_zone": true
+  },
+  "eligible_jans": [],
+  "eligible_categories": ["food.staple", "food.canned", "food.dairy", "household.daily"],
+  "excluded_jans": [],
+  "approved_mccs": [5411, 5499, 5912],
+  "blocked_mccs": [5921, 5993, 5813, 7995],
+  "approved_suppliers": [
+    "supplier-sanaa-wfp-coop-001",
+    "supplier-hodeidah-wfp-coop-002",
+    "supplier-hajjah-wfp-coop-003"
+  ],
+  "expected_donors": 5000,
+  "expected_beneficiaries": 12000,
+  "donor_tier_thresholds_usdc_centi": {
+    "anon_max": 5000,
+    "tier1_max": 100000,
+    "tier2_max": 1000000
+  },
+  "audit_trail": {
+    "ndrrmc_equivalent": "WFP Country Office + UN OCHA",
+    "emergency_bypass_enabled": true,
+    "post_recovery_audit_days": 14,
+    "sanctions_evasion_monitoring": "enhanced (UN Sanctions Committee CO-located)"
+  },
+  "interop_with_wfp_building_blocks": {
+    "enabled": true,
+    "bridge_protocol": "federated_pid_attestation",
+    "double_distribution_prevention": "wfp_consumed_check_required"
+  }
+}

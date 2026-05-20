@@ -22,7 +22,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-TARGETS=(jica coins-ph dswd quezon-city)
+TARGETS=(jica coins-ph dswd quezon-city unicef wfp-building-blocks unhcr)
 DATE="$(date +%Y-%m-%d)"
 OUTDIR="${OUTDIR:-/tmp}"
 

@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Donor-PBM — あなたの寄付の透明化</title>
+<link rel="stylesheet" href="/ui/styles.css">
+<style>
+  body { background: #f4f6f9; }
+  .hero { padding: 28px 0 16px; }
+  .hero h1 { font-size: 26px; margin: 0 0 12px; line-height: 1.2; }
+  .hero .lede { font-size: 16px; color: var(--ink-sub); margin: 0 0 16px; max-width: 720px; }
+  .lang-toggle { float: right; font-size: 13px; }
+  .lang-toggle a { color: var(--ink-sub); text-decoration: none; padding: 4px 8px;
+    border: 1px solid var(--rule, #dfe3eb); border-radius: 4px; margin-left: 4px; cursor: pointer; }
+  .lang-toggle a.active { background: var(--tokyo-navy, #0E419A); color: white; }
+  .impact-stat { background: white; border: 1px solid var(--line); border-radius: 8px;
+    padding: 14px; }
+  .impact-stat .num { font-size: 28px; font-weight: 700; color: var(--tokyo-green); }
+  .impact-stat .lbl { font-size: 12px; color: var(--ink-sub); }
+  .program-card { background: white; border: 1px solid var(--line); border-radius: 8px;
+    padding: 14px; margin-bottom: 12px; }
+  .program-card h3 { margin: 0 0 6px; font-size: 16px; }
+  .program-card .meta { font-size: 12px; color: var(--ink-sub); margin: 6px 0; }
+  .program-card .tier-badge { display: inline-block; padding: 2px 8px;
+    background: var(--tokyo-yellow); border-radius: 3px; font-size: 11px; }
+  .privacy-note { background: #fff8db; padding: 12px; border-radius: 6px;
+    border-left: 4px solid var(--tokyo-yellow); font-size: 13px; }
+  body[data-lang="en"] [data-lang="jp"], body[data-lang="en"] [data-lang="tl"] { display: none; }
+  body[data-lang="jp"] [data-lang="en"], body[data-lang="jp"] [data-lang="tl"] { display: none; }
+  body[data-lang="tl"] [data-lang="jp"], body[data-lang="tl"] [data-lang="en"] { display: none; }
+</style>
+</head>
+<body data-lang="jp">
+<div id="chrome"></div>
+<main>
+
+<section class="hero">
+  <div class="lang-toggle">
+    <a data-set-lang="jp" class="active">日本語</a>
+    <a data-set-lang="en">English</a>
+    <a data-set-lang="tl">Tagalog</a>
+  </div>
+  <h1>
+    <span data-lang="jp">あなたの寄付の透明化 — Donor-PBM</span>
+    <span data-lang="en">Your donations, made transparent — Donor-PBM</span>
+    <span data-lang="tl">Donor-PBM — transparent na donasyon</span>
+  </h1>
+  <p class="lede">
+    <span data-lang="jp">
+      JICA / UNICEF / WFP 等への寄付を blockchain で追跡。あなたの ¥10,000 が
+      Mali の何世帯に届いたか、何枚の蚊帳が配布されたかが、リアルタイムで見える。
+      管理費 中抜き構造的にゼロ。
+    </span>
+    <span data-lang="en">
+      Track your donations to JICA / UNICEF / WFP via blockchain. See in real-time
+      how many households in Mali received supplies, how many mosquito nets were
+      distributed. Zero middleman cuts by construction.
+    </span>
+    <span data-lang="tl">
+      I-track ang donasyon mo sa JICA / UNICEF / WFP via blockchain. Real-time na
+      makikita kung ilang bahay sa Mali ang nakatanggap. Walang middleman cuts.
+    </span>
+  </p>
+</section>
+
+<section>
+  <h2>
+    <span data-lang="jp">① 寄付の impact (mock)</span>
+    <span data-lang="en">① Donation impact (mock)</span>
+    <span data-lang="tl">① Impact ng donasyon (mock)</span>
+  </h2>
+  <p class="privacy-note">
+    <span data-lang="jp">
+      ⚠ 受益者プライバシー保護のため、表示は <b>国レベル</b> + <b>k=50 集約</b> のみ。
+      個人特定は構造的に不可能。詳細: <code>docs/expansion-donor-pbm.md</code> §3
+    </span>
+    <span data-lang="en">
+      ⚠ For beneficiary privacy, display is <b>country-level</b> + <b>k=50 aggregation</b> only.
+      Per-individual identification structurally impossible. See <code>docs/expansion-donor-pbm.md</code> §3
+    </span>
+    <span data-lang="tl">
+      ⚠ Para sa privacy, country-level + k=50 aggregation lamang.
+    </span>
+  </p>
+  <div class="tile-grid" id="impactStats">
+    <div class="impact-stat"><div class="num" id="totalDonated">—</div>
+      <div class="lbl" data-lang="jp">寄付額累計</div>
+      <div class="lbl" data-lang="en">Total donated</div>
+      <div class="lbl" data-lang="tl">Total na donasyon</div>
+    </div>
+    <div class="impact-stat"><div class="num" id="numDonations">—</div>
+      <div class="lbl" data-lang="jp">寄付回数</div>
+      <div class="lbl" data-lang="en">Donation count</div>
+      <div class="lbl" data-lang="tl">Bilang ng donasyon</div>
+    </div>
+    <div class="impact-stat"><div class="num" id="numPrograms">—</div>
+      <div class="lbl" data-lang="jp">関与プログラム数</div>
+      <div class="lbl" data-lang="en">Programs involved</div>
+      <div class="lbl" data-lang="tl">Mga programa</div>
+    </div>
+    <div class="impact-stat"><div class="num" id="numCp8">—</div>
+      <div class="lbl" data-lang="jp">CP-8 緊急 bypass 件数</div>
+      <div class="lbl" data-lang="en">CP-8 emergency bypasses</div>
+      <div class="lbl" data-lang="tl">Mga CP-8 bypass</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>
+    <span data-lang="jp">② 寄付可能なプログラム</span>
+    <span data-lang="en">② Available donation programs</span>
+    <span data-lang="tl">② Mga programa</span>
+  </h2>
+
+  <div class="program-card">
+    <h3>UNICEF Mali LLIN Distribution 2026</h3>
+    <div class="meta">
+      <span data-lang="jp">Mali Kayes region・雨季 (5-9 月)・蚊帳 LLIN 配布</span>
+      <span data-lang="en">Mali Kayes region · rainy season (May-Sep) · LLIN distribution</span>
+      <span data-lang="tl">Mali Kayes · LLIN distribution</span>
+    </div>
+    <div class="meta">
+      <span data-lang="jp">想定 5,000 世帯、USDC 換算 50,000 程度</span>
+      <span data-lang="en">5,000 households target, USDC ~50,000 budget</span>
+      <span data-lang="tl">5,000 sambahayan</span>
+    </div>
+    <button onclick="window.__donate('prog-unicef-mali-llin-2026', 'USDC')">
+      <span data-lang="jp">この program に寄付する</span>
+      <span data-lang="en">Donate to this program</span>
+      <span data-lang="tl">Mag-donate</span>
+    </button>
+  </div>
+
+  <div class="program-card">
+    <h3>WFP Yemen Food Distribution 2026</h3>
+    <div class="meta">
+      <span data-lang="jp">Yemen Sa'ada/Hodeidah・WFP Building Blocks interop・食料配布</span>
+      <span data-lang="en">Yemen Sa'ada/Hodeidah · WFP Building Blocks interop · food</span>
+      <span data-lang="tl">Yemen · food</span>
+    </div>
+    <span class="tier-badge">
+      <span data-lang="jp">紛争地: ProGres iris 必須</span>
+      <span data-lang="en">Conflict zone: ProGres iris required</span>
+      <span data-lang="tl">Sakuna na lugar</span>
+    </span>
+    <div class="meta">
+      <span data-lang="jp">想定 12,000 世帯、USDC 200,000 規模</span>
+      <span data-lang="en">12,000 households, USDC 200,000 scale</span>
+      <span data-lang="tl">12,000 sambahayan</span>
+    </div>
+    <button onclick="window.__donate('prog-wfp-yemen-food-2026', 'USDC')">
+      <span data-lang="jp">この program に寄付する</span>
+      <span data-lang="en">Donate to this program</span>
+      <span data-lang="tl">Mag-donate</span>
+    </button>
+  </div>
+
+  <div class="program-card">
+    <h3>JICA Bangladesh Primary School Materials 2026</h3>
+    <div class="meta">
+      <span data-lang="jp">Bangladesh Chattogram/Dhaka Slum・教科書 + 文房具配布</span>
+      <span data-lang="en">Bangladesh Chattogram/Dhaka Slum · textbooks + stationery</span>
+      <span data-lang="tl">Bangladesh · libro at materyales</span>
+    </div>
+    <span class="tier-badge">
+      <span data-lang="jp">JPYC (税金経由 ODA)</span>
+      <span data-lang="en">JPYC (ODA via tax)</span>
+      <span data-lang="tl">JPYC (ODA)</span>
+    </span>
+    <div class="meta">
+      <span data-lang="jp">3,000 世帯、JPYC 100M 規模 (国会報告書代替)</span>
+      <span data-lang="en">3,000 households, JPYC 100M scale (Diet report substitute)</span>
+      <span data-lang="tl">3,000 sambahayan</span>
+    </div>
+    <button onclick="window.__donate('prog-jica-bangladesh-school-2026', 'JPYC')">
+      <span data-lang="jp">この program に寄付する</span>
+      <span data-lang="en">Donate to this program</span>
+      <span data-lang="tl">Mag-donate</span>
+    </button>
+  </div>
+</section>
+
+<section>
+  <h2>
+    <span data-lang="jp">③ KYC tier ガイド</span>
+    <span data-lang="en">③ KYC tier guide</span>
+    <span data-lang="tl">③ KYC tier guide</span>
+  </h2>
+  <table>
+    <thead><tr>
+      <th data-lang="jp">寄付額 (USDC)</th>
+      <th data-lang="en">Amount (USDC)</th>
+      <th data-lang="tl">Halaga (USDC)</th>
+      <th data-lang="jp">必要 KYC</th>
+      <th data-lang="en">Required KYC</th>
+      <th data-lang="tl">KYC kailangan</th>
+    </tr></thead>
+    <tbody>
+      <tr><td>$0-50</td><td>Tier 0 (anon)</td></tr>
+      <tr><td>$50-1000</td><td>Tier 1 (name + DOB + email)</td></tr>
+      <tr><td>$1000-10000</td><td>Tier 2 (+ photo ID + biometric)</td></tr>
+      <tr><td>$10000+</td><td>Tier 3 (+ source of wealth)</td></tr>
+      <tr><td colspan="2"><span data-lang="jp">$3000+ は FATF Travel Rule 強制で Tier 2 以上</span><span data-lang="en">$3000+ enforces FATF Travel Rule → Tier 2+</span><span data-lang="tl">$3000+ FATF Tier 2+</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+</main>
+
+<script src="/ui/api.js"></script>
+<script>
+function setLang(lang) {
+  document.body.dataset.lang = lang;
+  document.querySelectorAll('[data-set-lang]').forEach(a =>
+    a.classList.toggle('active', a.dataset.setLang === lang));
+}
+document.querySelectorAll('[data-set-lang]').forEach(a => {
+  a.addEventListener('click', () => setLang(a.dataset.setLang));
+});
+setLang('jp');
+
+window.__donate = function(programId, token) {
+  const amount = prompt('寄付額 (smallest unit, e.g., 1000 = $10):');
+  if (!amount) return;
+  const amountCenti = parseInt(amount, 10);
+  if (isNaN(amountCenti) || amountCenti <= 0) {
+    alert('Invalid amount');
+    return;
+  }
+  const state = Math.random().toString(36).slice(2);
+  const redirectUri = location.origin + '/ui/donor.html';
+  const url = '/donor-oauth/v1/authorize?' + new URLSearchParams({
+    response_type: 'code',
+    provider: 'coinbase',
+    redirect_uri: redirectUri,
+    amount_centi: amountCenti,
+    program_id: programId,
+    underlying_token: token,
+    state: state,
+  });
+  window.open(url, '_blank');
+};
+
+async function loadImpactDemo() {
+  // demo: mock の donor impact を取得 (実際は OAuth flow 経由で取得)
+  // ここでは sandbox での summary display 用
+  try {
+    document.getElementById('totalDonated').textContent = '—';
+    document.getElementById('numDonations').textContent = '—';
+    document.getElementById('numPrograms').textContent = '—';
+    document.getElementById('numCp8').textContent = '—';
+  } catch (e) {}
+}
+loadImpactDemo();
+</script>
+</body>
+</html>

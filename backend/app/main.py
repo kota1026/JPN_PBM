@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.types import Scope
 
 from app.db import init_db
-from app.routers import auth, consent, ebpm, myna_oauth, offline, philsys_oauth, products, programs, purchase, seed, treasury, wallet
+from app.routers import auth, consent, donor_oauth, ebpm, myna_oauth, offline, philsys_oauth, products, programs, purchase, seed, treasury, wallet
 
 
 @contextlib.asynccontextmanager
@@ -39,6 +39,7 @@ app.include_router(auth.router)
 app.include_router(consent.router)
 app.include_router(myna_oauth.router)
 app.include_router(philsys_oauth.router)
+app.include_router(donor_oauth.router)
 app.include_router(programs.router)
 app.include_router(wallet.router)
 app.include_router(products.router)
